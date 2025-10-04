@@ -1,6 +1,7 @@
 from pathlib import Path
 import pandas as pd
 from Modules.data_ingestion import load_sales_data, append_daily_sales
+from Modules.trends_analysis import calculate_monthly_mix, plot_monthly_mix_pct
 
 # main.py is now at the repo root
 PROJECT_ROOT = Path.cwd()
@@ -30,3 +31,11 @@ out_csv = PROJECT_ROOT / "data" / "sales_data.csv"
 out_csv.parent.mkdir(parents=True, exist_ok=True)
 sales_df.to_csv(out_csv, index=False)
 print(f"📁 Saved sales data to '{out_csv}'")
+
+
+# Calculate monthly mix
+monthly_mix, monthly_mix_pct = calculate_monthly_mix(sales_df)
+
+# Plot
+plot_monthly_mix_pct(monthly_mix_pct)
+
