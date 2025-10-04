@@ -8,7 +8,6 @@ def load_sales_data(filepath, sheet_name="Sheet1"):
     df = pd.read_excel(filepath, sheet_name=sheet_name, parse_dates=['Date'], engine='openpyxl')
     return df
 
-
 def append_daily_sales(master_df, new_data_df):
     """
     Appends new sales data to the master DataFrame, removing duplicates.
