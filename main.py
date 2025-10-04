@@ -1,5 +1,6 @@
 from pathlib import Path
 import pandas as pd
+
 from Modules.data_ingestion import load_sales_data, append_daily_sales
 from Modules.trends_analysis import calculate_monthly_mix, plot_monthly_mix_pct
 from Modules.rolling_eoq import calculate_rolling_eoq
@@ -14,8 +15,7 @@ sales_df = load_sales_data(str(sales_file), sheet_name="Sheet1")
 
 # Ensure Date column is in datetime format
 sales_df["Date"] = pd.to_datetime(sales_df["Date"], errors="coerce")
-
-print(" Loaded master sales data:")
+print("✅ Loaded master sales data:")
 print(sales_df.head())
 
 # --- Optional: Step 2 — Append a new daily sales file ---
@@ -34,15 +34,11 @@ out_csv.parent.mkdir(parents=True, exist_ok=True)
 sales_df.to_csv(out_csv, index=False)
 print(f"📁 Saved sales data to '{out_csv}'")
 
-
 # Calculate monthly mix
 monthly_mix, monthly_mix_pct = calculate_monthly_mix(sales_df)
 
 # Plot
 plot_monthly_mix_pct(monthly_mix_pct)
-
-
-
 
 # Create a dictionary mapping each SKU to its weight per piece
 sku_weights = dict(zip(sales_df['Particular'], sales_df['Weight Per Piece']))
@@ -50,11 +46,12 @@ sku_weights = dict(zip(sales_df['Particular'], sales_df['Weight Per Piece']))
 # Run EOQ calculation for the last 90 days
 eoq_results = calculate_rolling_eoq(sales_df, sku_weights, lookback_days=365)
 
+# Create outputs directory if it doesn't exist (FIX)
+Path("outputs").mkdir(parents=True, exist_ok=True)
+
 # Save or inspect the EOQ results
 eoq_results.to_csv("outputs/eoq_results.csv", index=False)
 print(eoq_results)
-
-
 
 _, current_inventory = build_inventory_timeline(
     sales_file="data/MDF Sales data.xlsx",

@@ -41,7 +41,7 @@ def build_inventory_timeline(sales_file, purchase_file, base_inventory_file):
 
     # Create a DataFrame to track inventory
     inventory = pd.DataFrame(index=all_dates, columns=all_skus)
-    inventory = inventory.fillna(0)
+    inventory = inventory.fillna(0).infer_objects(copy=False)
 
     # Add base inventory on the first day
     for _, row in base_inventory.iterrows():
