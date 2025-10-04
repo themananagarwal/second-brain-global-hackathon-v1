@@ -2,6 +2,8 @@ from pathlib import Path
 import pandas as pd
 from Modules.data_ingestion import load_sales_data, append_daily_sales
 from Modules.trends_analysis import calculate_monthly_mix, plot_monthly_mix_pct
+from Modules.rolling_eoq import calculate_rolling_eoq
+from Modules.inventory_tracker import build_inventory_timeline
 
 # main.py is now at the repo root
 PROJECT_ROOT = Path.cwd()
@@ -39,3 +41,25 @@ monthly_mix, monthly_mix_pct = calculate_monthly_mix(sales_df)
 # Plot
 plot_monthly_mix_pct(monthly_mix_pct)
 
+
+
+
+# Create a dictionary mapping each SKU to its weight per piece
+sku_weights = dict(zip(sales_df['Particular'], sales_df['Weight Per Piece']))
+
+# Run EOQ calculation for the last 90 days
+eoq_results = calculate_rolling_eoq(sales_df, sku_weights, lookback_days=365)
+
+# Save or inspect the EOQ results
+eoq_results.to_csv("outputs/eoq_results.csv", index=False)
+print(eoq_results)
+
+
+
+_, current_inventory = build_inventory_timeline(
+    sales_file="data/MDF Sales data.xlsx",
+    purchase_file="data/MDF purchase data.xlsx",
+    base_inventory_file="data/Inventory Base Data.xlsx"
+)
+
+print(current_inventory.head())  # optional: preview
