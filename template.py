@@ -306,14 +306,19 @@ def inject_global_css():
 
     .nav-container {
         background: var(--color-white);
-        border-bottom: 1px solid var(--color-border);
+        border-bottom: 0px solid var(--color-border);
         padding: var(--spacing-sm) 0;
         margin-bottom: var(--spacing-lg);
+                
+         /* Add these lines 👇 */
+        position: sticky;
+        top: 0;
+        z-index: 100;
     }
 
     .nav-brand {
         display: flex;
-        align-items: center;
+        align-items: left;
         gap: var(--spacing-xs);
         font-size: 1.5rem;
         font-weight: 700;
