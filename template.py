@@ -318,7 +318,7 @@ def inject_global_css():
 
     .nav-brand {
         display: flex;
-        align-items: center;
+        align-items: left;
         gap: var(--spacing-xs);
         font-size: 1.5rem;
         font-weight: 700;
