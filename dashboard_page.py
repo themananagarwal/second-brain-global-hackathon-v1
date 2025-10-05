@@ -351,7 +351,7 @@ def render_dashboard_page(sales_df, latest_inv, eoq_df, rop_df, mix_pct):
                     margin=dict(l=20, r=20, t=10, b=20),
                     paper_bgcolor='rgba(255,255,255,0.6)',
                     plot_bgcolor='rgba(0,0,0,0)',
-                    font=dict(color='#000000', size=11, family='Arial'),
+                    font=dict(color='#374151', size=11, family='Arial'),
                     showlegend=False
                 )
 
