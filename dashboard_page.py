@@ -1,4 +1,4 @@
-# dashboard_page.py
+# dashboard_page.py - FIXED VERSION
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -150,23 +150,26 @@ def render_dashboard_page(sales_df, latest_inv, eoq_df, rop_df, mix_pct):
 
                     fig.update_layout(
                         height=350,
-                        margin=dict(l=20, r=20, t=10, b=20),
+                        margin=dict(l=40, r=20, t=10, b=40),
                         paper_bgcolor='rgba(0,0,0,0)',
                         plot_bgcolor='rgba(0,0,0,0)',
-                        font=dict(color='#374151', size=11, family='Arial'),
+                        font=dict(color='#2C3E50', size=12, family='Arial'),
                         showlegend=False,
                         hovermode='x unified',
                         xaxis=dict(
                             showgrid=True,
-                            gridcolor='rgba(148, 163, 184, 0.15)',
+                            gridcolor='rgba(148, 163, 184, 0.2)',
                             zeroline=False,
-                            title=None
+                            title=None,
+                            tickfont=dict(color='#2C3E50', size=11)
                         ),
                         yaxis=dict(
                             showgrid=True,
-                            gridcolor='rgba(148, 163, 184, 0.15)',
+                            gridcolor='rgba(148, 163, 184, 0.2)',
                             zeroline=False,
-                            title='Quantity'
+                            title='Quantity',
+                            titlefont=dict(color='#2C3E50', size=12),
+                            tickfont=dict(color='#2C3E50', size=11)
                         )
                     )
 
@@ -191,9 +194,9 @@ def render_dashboard_page(sales_df, latest_inv, eoq_df, rop_df, mix_pct):
             if 'Particular' in sales_df.columns and 'Quantity' in sales_df.columns:
                 # Calculate product mix
                 product_mix = sales_df.groupby('Particular')['Quantity'].sum().reset_index()
-                product_mix = product_mix.sort_values('Quantity', ascending=False).head(8)
+                product_mix = product_mix.sort_values('Quantity', ascending=True).head(8)
 
-                # Create horizontal bar chart
+                # Create horizontal bar chart with FIXED STYLING
                 fig = go.Figure()
                 fig.add_trace(go.Bar(
                     y=product_mix['Particular'],
@@ -207,25 +210,37 @@ def render_dashboard_page(sales_df, latest_inv, eoq_df, rop_df, mix_pct):
                     ),
                     text=product_mix['Quantity'],
                     textposition='outside',
-                    texttemplate='%{text:,.0f}',
+                    texttemplate='<b>%{text:,.0f}</b>',
+                    textfont=dict(
+                        size=12,
+                        color='#2C3E50',
+                        family='Arial'
+                    ),
                     hovertemplate='<b>%{y}</b><br>Quantity: %{x:,.0f}<extra></extra>'
                 ))
 
                 fig.update_layout(
                     height=350,
-                    margin=dict(l=10, r=40, t=10, b=20),
+                    margin=dict(l=120, r=60, t=10, b=40),  # Increased left margin for labels
                     paper_bgcolor='rgba(0,0,0,0)',
                     plot_bgcolor='rgba(0,0,0,0)',
-                    font=dict(color='#374151', size=11, family='Arial'),
+                    font=dict(color='#2C3E50', size=12, family='Arial'),
                     showlegend=False,
                     xaxis=dict(
                         showgrid=True,
-                        gridcolor='rgba(148, 163, 184, 0.15)',
-                        title=None
+                        gridcolor='rgba(148, 163, 184, 0.2)',
+                        title=None,
+                        tickfont=dict(color='#2C3E50', size=11)
                     ),
                     yaxis=dict(
                         showgrid=False,
-                        title=None
+                        title=None,
+                        tickfont=dict(
+                            color='#2C3E50',  # Dark text for y-axis labels
+                            size=11,
+                            family='Arial'
+                        ),
+                        automargin=True
                     )
                 )
 
@@ -273,7 +288,8 @@ def render_dashboard_page(sales_df, latest_inv, eoq_df, rop_df, mix_pct):
                         marker_color='#00BFFF',
                         text=inv_comparison[inv_qty_col],
                         textposition='outside',
-                        texttemplate='%{text:,.0f}',
+                        texttemplate='<b>%{text:,.0f}</b>',
+                        textfont=dict(size=11, color='#2C3E50'),
                         hovertemplate='<b>%{x}</b><br>Current: %{y:,.0f}<extra></extra>'
                     ))
 
@@ -284,16 +300,17 @@ def render_dashboard_page(sales_df, latest_inv, eoq_df, rop_df, mix_pct):
                         marker_color='#28A745',
                         text=inv_comparison['EOQ'],
                         textposition='outside',
-                        texttemplate='%{text:,.0f}',
+                        texttemplate='<b>%{text:,.0f}</b>',
+                        textfont=dict(size=11, color='#2C3E50'),
                         hovertemplate='<b>%{x}</b><br>Optimal: %{y:,.0f}<extra></extra>'
                     ))
 
                     fig.update_layout(
                         height=350,
-                        margin=dict(l=20, r=20, t=10, b=20),
+                        margin=dict(l=40, r=20, t=10, b=60),
                         paper_bgcolor='rgba(0,0,0,0)',
                         plot_bgcolor='rgba(0,0,0,0)',
-                        font=dict(color='#374151', size=11, family='Arial'),
+                        font=dict(color='#2C3E50', size=12, family='Arial'),
                         barmode='group',
                         showlegend=True,
                         legend=dict(
@@ -302,19 +319,23 @@ def render_dashboard_page(sales_df, latest_inv, eoq_df, rop_df, mix_pct):
                             y=1.02,
                             xanchor="right",
                             x=1,
-                            bgcolor='rgba(255,255,255,0.8)',
+                            bgcolor='rgba(255,255,255,0.9)',
                             bordercolor='#E5E7EB',
-                            borderwidth=1
+                            borderwidth=1,
+                            font=dict(color='#2C3E50', size=11)
                         ),
                         xaxis=dict(
                             showgrid=False,
                             title=None,
-                            tickangle=-45
+                            tickangle=-45,
+                            tickfont=dict(color='#2C3E50', size=10)
                         ),
                         yaxis=dict(
                             showgrid=True,
-                            gridcolor='rgba(148, 163, 184, 0.15)',
-                            title='Quantity'
+                            gridcolor='rgba(148, 163, 184, 0.2)',
+                            title='Quantity',
+                            titlefont=dict(color='#2C3E50', size=12),
+                            tickfont=dict(color='#2C3E50', size=11)
                         )
                     )
 
@@ -356,25 +377,30 @@ def render_dashboard_page(sales_df, latest_inv, eoq_df, rop_df, mix_pct):
                     marker_color=colors,
                     text=reorder_counts['Count'],
                     textposition='outside',
-                    texttemplate='%{text}',
+                    texttemplate='<b>%{text}</b>',
+                    textfont=dict(size=12, color='#2C3E50'),
                     hovertemplate='<b>%{x}</b><br>Count: %{y}<extra></extra>'
                 )])
 
                 fig.update_layout(
                     height=350,
-                    margin=dict(l=20, r=20, t=10, b=20),
+                    margin=dict(l=40, r=20, t=10, b=60),
                     paper_bgcolor='rgba(0,0,0,0)',
                     plot_bgcolor='rgba(0,0,0,0)',
-                    font=dict(color='#374151', size=11, family='Arial'),
+                    font=dict(color='#2C3E50', size=12, family='Arial'),
                     showlegend=False,
                     xaxis=dict(
                         showgrid=False,
-                        title=None
+                        title=None,
+                        tickfont=dict(color='#2C3E50', size=11),
+                        tickangle=-15
                     ),
                     yaxis=dict(
                         showgrid=True,
-                        gridcolor='rgba(148, 163, 184, 0.15)',
-                        title='Number of SKUs'
+                        gridcolor='rgba(148, 163, 184, 0.2)',
+                        title='Number of SKUs',
+                        titlefont=dict(color='#2C3E50', size=12),
+                        tickfont=dict(color='#2C3E50', size=11)
                     )
                 )
 
@@ -401,7 +427,7 @@ def render_dashboard_page(sales_df, latest_inv, eoq_df, rop_df, mix_pct):
             fig = go.Figure()
 
             products = mix_pct.columns.tolist()
-            colors = ['#00BFFF', '#0099E5', '#28A745', '#FF9500', '#DC3545', '#6C757D']
+            colors = ['#00BFFF', '#0099E5', '#28A745', '#FF9500', '#DC3545', '#6C757D', '#9B59B6', '#E74C3C']
 
             for i, product in enumerate(products):
                 fig.add_trace(go.Scatter(
@@ -417,31 +443,35 @@ def render_dashboard_page(sales_df, latest_inv, eoq_df, rop_df, mix_pct):
 
             fig.update_layout(
                 height=400,
-                margin=dict(l=20, r=20, t=10, b=40),
+                margin=dict(l=40, r=20, t=10, b=80),
                 paper_bgcolor='rgba(0,0,0,0)',
                 plot_bgcolor='rgba(0,0,0,0)',
-                font=dict(color='#374151', size=11, family='Arial'),
+                font=dict(color='#2C3E50', size=12, family='Arial'),
                 showlegend=True,
                 legend=dict(
                     orientation="h",
                     yanchor="bottom",
-                    y=-0.3,
+                    y=-0.35,
                     xanchor="center",
                     x=0.5,
-                    bgcolor='rgba(255,255,255,0.8)',
+                    bgcolor='rgba(255,255,255,0.9)',
                     bordercolor='#E5E7EB',
-                    borderwidth=1
+                    borderwidth=1,
+                    font=dict(color='#2C3E50', size=11)
                 ),
                 hovermode='x unified',
                 xaxis=dict(
                     showgrid=True,
-                    gridcolor='rgba(148, 163, 184, 0.15)',
-                    title=None
+                    gridcolor='rgba(148, 163, 184, 0.2)',
+                    title=None,
+                    tickfont=dict(color='#2C3E50', size=11)
                 ),
                 yaxis=dict(
                     showgrid=True,
-                    gridcolor='rgba(148, 163, 184, 0.15)',
+                    gridcolor='rgba(148, 163, 184, 0.2)',
                     title='Percentage (%)',
+                    titlefont=dict(color='#2C3E50', size=12),
+                    tickfont=dict(color='#2C3E50', size=11),
                     range=[0, 100]
                 )
             )
@@ -724,13 +754,23 @@ def render_dashboard_page(sales_df, latest_inv, eoq_df, rop_df, mix_pct):
                                         fig.update_layout(
                                             title="Cumulative Fill Rate Over Time",
                                             height=300,
-                                            margin=dict(l=20, r=20, t=40, b=20),
+                                            margin=dict(l=40, r=20, t=50, b=40),
                                             paper_bgcolor='rgba(0,0,0,0)',
                                             plot_bgcolor='rgba(0,0,0,0)',
-                                            font=dict(color='#374151', size=11),
-                                            xaxis=dict(showgrid=True, gridcolor='rgba(148, 163, 184, 0.15)'),
-                                            yaxis=dict(showgrid=True, gridcolor='rgba(148, 163, 184, 0.15)',
-                                                       title='Fill Rate (%)', range=[0, 100])
+                                            font=dict(color='#2C3E50', size=12),
+                                            xaxis=dict(
+                                                showgrid=True,
+                                                gridcolor='rgba(148, 163, 184, 0.2)',
+                                                tickfont=dict(color='#2C3E50')
+                                            ),
+                                            yaxis=dict(
+                                                showgrid=True,
+                                                gridcolor='rgba(148, 163, 184, 0.2)',
+                                                title='Fill Rate (%)',
+                                                titlefont=dict(color='#2C3E50'),
+                                                tickfont=dict(color='#2C3E50'),
+                                                range=[0, 100]
+                                            )
                                         )
 
                                         st.plotly_chart(fig, use_container_width=True)
@@ -747,13 +787,21 @@ def render_dashboard_page(sales_df, latest_inv, eoq_df, rop_df, mix_pct):
                                         fig2.update_layout(
                                             title="Daily Open Backorders",
                                             height=300,
-                                            margin=dict(l=20, r=20, t=40, b=20),
+                                            margin=dict(l=40, r=20, t=50, b=40),
                                             paper_bgcolor='rgba(0,0,0,0)',
                                             plot_bgcolor='rgba(0,0,0,0)',
-                                            font=dict(color='#374151', size=11),
-                                            xaxis=dict(showgrid=False),
-                                            yaxis=dict(showgrid=True, gridcolor='rgba(148, 163, 184, 0.15)',
-                                                       title='Units')
+                                            font=dict(color='#2C3E50', size=12),
+                                            xaxis=dict(
+                                                showgrid=False,
+                                                tickfont=dict(color='#2C3E50')
+                                            ),
+                                            yaxis=dict(
+                                                showgrid=True,
+                                                gridcolor='rgba(148, 163, 184, 0.2)',
+                                                title='Units',
+                                                titlefont=dict(color='#2C3E50'),
+                                                tickfont=dict(color='#2C3E50')
+                                            )
                                         )
 
                                         st.plotly_chart(fig2, use_container_width=True)
@@ -808,8 +856,7 @@ def render_dashboard_page(sales_df, latest_inv, eoq_df, rop_df, mix_pct):
     with tab1:
         if latest_inv is not None and not latest_inv.empty:
             st.dataframe(
-                latest_inv.style.background_gradient(cmap='Blues',
-                                                     subset=latest_inv.select_dtypes(include=['number']).columns),
+                latest_inv,
                 use_container_width=True,
                 height=400
             )
@@ -828,8 +875,7 @@ def render_dashboard_page(sales_df, latest_inv, eoq_df, rop_df, mix_pct):
     with tab2:
         if eoq_df is not None and not eoq_df.empty:
             st.dataframe(
-                eoq_df.style.background_gradient(cmap='Greens',
-                                                 subset=eoq_df.select_dtypes(include=['number']).columns),
+                eoq_df,
                 use_container_width=True,
                 height=400
             )
