@@ -7,7 +7,9 @@
 # - Integer inventories (no fractional pieces)
 # - Backorders persist and count towards order sizing
 # - 10–12 ton batching; packs items by needed weight
-# - Daily summaries and full inventory print at each order prompt
+# - Daily summaries + backorder ratios (today + cumulative)
+# - Full inventory print at each order prompt
+# - Writes final inventory and daily summary CSVs
 # ------------------------------------------------------------
 
 import os, sys, math, re
@@ -46,7 +48,7 @@ def clean_particular_mdf(name: str) -> str:
     # Remove standalone MDF token (surrounded by word boundaries/spaces)
     return re.sub(r"\bMDF\b\s*", "", name.strip(), flags=re.IGNORECASE)
 
-def piece_weight_kg(sku: str, weight_map: dict[str, float]) -> float:
+def piece_weight_kg(sku: str, weight_map: Dict[str, float]) -> float:
     """Return per-piece weight in kg; fallback thickness*2.24 if not provided."""
     if sku in weight_map and weight_map[sku] > 0:
         return float(weight_map[sku])
@@ -73,7 +75,6 @@ def print_full_inventory(title: str,
         ip = as_int(on_hand[s] + on_order[s] - backorders[s])
         target = mu_map[s] * 45 + ss_map[s]
         gap = max(0.0, target - ip)
-        # 'need' is how much we still need to reach target if triggered; convert to tons
         needed_units = as_int(backorders[s]) + as_int(gap)
         need_tons = qty_to_tons(s, needed_units, weight_map)
         rows.append((s, as_int(on_hand[s]), as_int(on_order[s]), as_int(backorders[s]),
@@ -92,6 +93,7 @@ def print_full_inventory(title: str,
 # Robust date parsing
 # -----------------------------
 def _smart_parse_dates(series: pd.Series) -> pd.Series:
+    """Parse dates without dropping rows; auto-detect dayfirst using a heuristic."""
     raw = series.astype(str).str.strip().str.replace(r"[./]", "-", regex=True)
 
     dt_us = pd.to_datetime(raw, errors="coerce", dayfirst=False)  # mm-dd
@@ -172,11 +174,17 @@ def simulate(interactive: bool = INTERACTIVE):
     ).reindex(columns=all_days, fill_value=0)
 
     # Build maps (note: keep names as-is from ROP/EOQ; they should match INVENTORY names)
-    mu_map     = defaultdict(float, dict(zip(rop["Particular"], pd.to_numeric(rop["mu_daily"], errors="coerce").fillna(0))))
-    ss_map     = defaultdict(float, dict(zip(rop["Particular"], pd.to_numeric(rop["safety_stock"], errors="coerce").fillna(0))))
-    rop_map    = defaultdict(float, dict(zip(rop["Particular"], pd.to_numeric(rop["reorder_point"], errors="coerce").fillna(0))))
-    eoq_map    = defaultdict(float, dict(zip(eoq["Particular"], pd.to_numeric(eoq["EOQ"], errors="coerce").fillna(0))))
-    weight_map = defaultdict(float, dict(zip(eoq["Particular"], pd.to_numeric(eoq.get("unit_weight", pd.Series([])), errors="coerce").fillna(0))))
+    mu_map  = defaultdict(float, dict(zip(rop["Particular"], pd.to_numeric(rop["mu_daily"], errors="coerce").fillna(0))))
+    ss_map  = defaultdict(float, dict(zip(rop["Particular"], pd.to_numeric(rop["safety_stock"], errors="coerce").fillna(0))))
+    rop_map = defaultdict(float, dict(zip(rop["Particular"], pd.to_numeric(rop["reorder_point"], errors="coerce").fillna(0))))
+    eoq_map = defaultdict(float, dict(zip( eoq["Particular"], pd.to_numeric( eoq["EOQ"], errors="coerce").fillna(0))))
+
+    # Robust weight map (use provided column if present; else zeros)
+    if "unit_weight" in eoq.columns:
+        weight_series = pd.to_numeric(eoq["unit_weight"], errors="coerce").fillna(0)
+    else:
+        weight_series = pd.Series([0]*len(eoq), index=eoq.index)
+    weight_map = defaultdict(float, dict(zip(eoq["Particular"], weight_series)))
 
     # State
     on_hand    = defaultdict(int, {r["Particular"]: as_int(r["Quantity"]) for _, r in inv.iterrows()})
@@ -185,8 +193,15 @@ def simulate(interactive: bool = INTERACTIVE):
     pending_batch = defaultdict(int)
     pos_in_transit: List[Dict] = []
 
-    # SKU universe (use union of names across files; note we didn't change INVENTORY/ROP names)
+    # SKU universe (union of names across files)
     skus = sorted(set(demand.index) | set(inv["Particular"]) | set(rop["Particular"]) | set(eoq["Particular"]))
+
+    # Daily logging
+    daily_rows: List[Dict] = []
+
+    # Cumulative trackers for fill-rate
+    cum_demand = 0
+    cum_shipped = 0
 
     # Utilities
     def inventory_position(sku):
@@ -207,13 +222,12 @@ def simulate(interactive: bool = INTERACTIVE):
         """Pack items by needed weight until TRUCK_MAX_TONS."""
         if not pending_batch:
             return False, {}, 0.0
-        # Sort by per-SKU weight contribution (descending)
         items = sorted(pending_batch.items(), key=lambda x: -qty_to_tons(x[0], x[1], weight_map))
         total_pending = batch_tons(pending_batch)
         if total_pending < TRUCK_MIN_TONS:
             return False, {}, total_pending
 
-        chosen = {}
+        chosen: Dict[str, int] = {}
         total_tons = 0.0
         for s, q in items:
             q = as_int(q)
@@ -225,12 +239,8 @@ def simulate(interactive: bool = INTERACTIVE):
                 chosen[s] = q
                 total_tons += cur_tons
             else:
-                # take partial units to fill up
                 remaining_kg = max(0.0, TRUCK_MAX_TONS * 1000.0 - total_tons * 1000.0)
-                if unit_kg > 0:
-                    allowed = as_int(remaining_kg / unit_kg)
-                else:
-                    allowed = 0
+                allowed = as_int(remaining_kg / unit_kg) if unit_kg > 0 else 0
                 if allowed > 0:
                     chosen[s] = allowed
                     total_tons += qty_to_tons(s, allowed, weight_map)
@@ -248,7 +258,6 @@ def simulate(interactive: bool = INTERACTIVE):
             on_order[s] += q
         pos_in_transit.append({"eta": eta.normalize(), "items": proposal})
         print(f"🚛 Order placed ({today.date()}), ETA {eta.date()}, total {batch_tons(proposal):.2f} t")
-        # Remove from pending
         for s in list(proposal.keys()):
             pending_batch.pop(s, None)
 
@@ -266,13 +275,14 @@ def simulate(interactive: bool = INTERACTIVE):
                     on_order[s] -= q
             pos_in_transit = [po for po in pos_in_transit if po["eta"] != day.normalize()]
 
-        # Today's demand vector (0s for missing SKUs)
         todays = demand.get(day, pd.Series(0, index=demand.index))
 
         # Day counters
         day_demand = 0
         day_shipped = 0
         triggered_today = []
+        day_order_placed = False
+        day_order_tons = 0.0
 
         # Process demand and triggers
         for s in skus:
@@ -293,13 +303,20 @@ def simulate(interactive: bool = INTERACTIVE):
             if inventory_position(s) <= rop_map[s]:
                 need = order_need_qty(s)
                 if need > 0:
-                    # keep the largest planned qty seen so far (don't shrink)
                     prev = as_int(pending_batch[s])
                     if need > prev:
                         pending_batch[s] = need
-                    if need > 0 and s not in triggered_today:
-                        # show qty planned (can be > today's gap, includes backorders)
+                    if s not in triggered_today:
                         triggered_today.append(f"{s}:{as_int(need)}")
+
+        # Update cumulative fill
+        cum_demand += day_demand
+        cum_shipped += day_shipped
+        today_backordered = max(0, day_demand - day_shipped)
+        today_bo_ratio = (today_backordered / day_demand * 100.0) if day_demand > 0 else 0.0
+        open_backorders_units = int(sum(backorders.values()))
+        cum_fill_rate = (cum_shipped / cum_demand * 100.0) if cum_demand > 0 else 100.0
+        cum_bo_ratio = 100.0 - cum_fill_rate  # % of cumulative demand not shipped
 
         # Daily summary print
         pend_tons = batch_tons(pending_batch)
@@ -308,6 +325,9 @@ def simulate(interactive: bool = INTERACTIVE):
         if triggered_today:
             print("Triggered today:", ", ".join(triggered_today[:8]) + (" ..." if len(triggered_today) > 8 else ""))
         print(f"Pending batch: {pend_tons:.2f} tons")
+        print(f"Backordered today: {today_backordered} ({today_bo_ratio:.1f}%) | "
+              f"Open BO: {open_backorders_units} | Cum fill rate: {cum_fill_rate:.1f}% "
+              f"(Cum BO ratio: {cum_bo_ratio:.1f}%)")
 
         # Propose order if we can make a truck
         can_make, proposal, tons = propose_batch()
@@ -322,12 +342,32 @@ def simulate(interactive: bool = INTERACTIVE):
             ans = "y" if not interactive else input("Place this order? [y/N]: ").strip().lower()
             if ans == "y":
                 place_order(day, proposal)
+                day_order_placed = True
+                day_order_tons = tons
 
                 # Full inventory AFTER decision
                 print_full_inventory("Inventory AFTER order decision", skus, on_hand, on_order, backorders,
                                      rop_map, mu_map, ss_map, weight_map)
             else:
                 print("   (Skipped; will keep accumulating.)")
+
+        # Log daily row
+        daily_rows.append({
+            "Date": day.date().isoformat(),
+            "demand_total": day_demand,
+            "shipped_total": day_shipped,
+            "backordered_today": today_backordered,
+            "backorder_ratio_today_pct": round(today_bo_ratio, 2),
+            "open_backorders_units": open_backorders_units,
+            "cum_demand": cum_demand,
+            "cum_shipped": cum_shipped,
+            "cum_fill_rate_pct": round(cum_fill_rate, 2),
+            "cum_backorder_ratio_pct": round(cum_bo_ratio, 2),
+            "pending_batch_tons": round(pend_tons, 3),
+            "triggers_count": len(triggered_today),
+            "order_placed": day_order_placed,
+            "order_tons": round(day_order_tons, 3) if day_order_placed else 0.0
+        })
 
     # -----------------------------
     # End summary
@@ -339,9 +379,17 @@ def simulate(interactive: bool = INTERACTIVE):
         "backorders": [as_int(backorders[s]) for s in skus],
     })
     final_inv.to_csv("data/sim_final_inventory.csv", index=False)
-    print("\n✅ Simulation complete. Final inventory saved to data/sim_final_inventory.csv")
-    # Print a compact preview (optional)
-    print(final_inv.sort_values(["backorders","final_on_hand"], ascending=[False, False]).head(12))
+
+    daily_df = pd.DataFrame(daily_rows)
+    daily_df.to_csv("data/sim_daily_summary.csv", index=False)
+
+    overall_cum_fill = (daily_df["cum_shipped"].iloc[-1] / max(1, daily_df["cum_demand"].iloc[-1])) * 100.0
+    overall_bo_ratio = 100.0 - overall_cum_fill
+
+    print("\n✅ Simulation complete.")
+    print(" - data/sim_final_inventory.csv")
+    print(" - data/sim_daily_summary.csv")
+    print(f"Overall cumulative fill rate: {overall_cum_fill:.2f}% | Overall BO ratio: {overall_bo_ratio:.2f}%")
 
 # -----------------------------
 # Main
