@@ -15,7 +15,26 @@ from Modules.inventory_tracker import build_inventory_timeline
 from Modules.rolling_eoq import calculate_rolling_eoq
 from Modules.reorder_evaluator import evaluate_reorder_points
 from Modules.trends_analysis import calculate_monthly_mix
-import template as tpl  # design & rendering layer
+# Replace: import template as tpl
+# With a robust import + sanity check:
+try:
+    from Modules import template as tpl  # if template.py is under Modules/
+except Exception:
+    import template as tpl               # else expect template.py at project root
+
+# Fail fast if the design module doesn’t have the required renderers
+REQUIRED_FUNCS = [
+    "inject_css",
+    "render_home",
+    "simulation_bar_centered",
+    "simulation_results_panel",
+    "render_dashboard",
+]
+missing = [f for f in REQUIRED_FUNCS if not hasattr(tpl, f)]
+if missing:
+    st.error(f"Design module missing: {', '.join(missing)}. Ensure template.py defines these functions.")
+    st.stop()
+
 
 # ---------- Page ----------
 st.set_page_config(page_title="Inventory & Orders", layout="wide")
