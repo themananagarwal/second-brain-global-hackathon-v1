@@ -183,11 +183,6 @@ def render_home_page():
         <span>⚡ Instant Optimization</span>
       </div>
     </div>
-
-    <div class="hero-right">
-      <!-- CHANGED: embed SVG as data URI -->
-      <img src="data:image/svg+xml;base64,{demo_b64}" alt="Dashboard demo" />
-    </div>
   </div>
 </div>
 """
