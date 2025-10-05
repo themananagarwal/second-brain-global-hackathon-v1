@@ -527,9 +527,10 @@ def inject_global_css():
     .chart-title {
         font-size: 1.25rem;
         font-weight: 600;
-        color: var(--color-text-primary);
+        color: #000000;
         margin-bottom: var(--spacing-sm);
     }
+
 
     /* ========================= */
     /* UTILITY CLASSES */
