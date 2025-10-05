@@ -1,5 +1,10 @@
 # app.py
 import os
+from io import StringIO
+from contextlib import redirect_stdout
+import importlib
+import importlib.util
+
 import pandas as pd
 import streamlit as st
 import plotly.express as px
@@ -105,7 +110,7 @@ def compute_pipeline():
 
     return inv_timeline, latest_inv, sales_df, eoq_df, rop_df, mix_pct
 
-# ---------- Run / Load ----------
+# ---------- Load or compute ----------
 if rebuild:
     with st.spinner("Recomputing…"):
         inv_timeline, latest_inv, sales_df, eoq_df, rop_df, mix_pct = compute_pipeline()
@@ -120,24 +125,62 @@ else:
     latest_inv = try_read_csv(LATEST_INV_CSV, ["Particular","Quantity"])
     eoq_df     = try_read_csv(EOQ_OUT_CSV, ["Particular","EOQ"])
     rop_df     = try_read_csv(REORDER_EVAL_CSV, ["Particular","reorder_point","inventory_position","need_reorder","suggested_order_qty","lead_time_days","service_level","Rate"])
-    # Safe monthly mix when sales missing
     if sales_df is not None and not sales_df.empty and "Date" in sales_df.columns and "Particular" in sales_df.columns:
         _, mix_pct = calculate_monthly_mix(sales_df)
     else:
         mix_pct = pd.DataFrame()
 
+# ---------- Simulation integration ----------
+def _load_simulation_module():
+    # Try import from project root
+    try:
+        import simulation  # type: ignore
+        return simulation
+    except Exception:
+        pass
+    # Try data/simulation.py
+    sim_path = os.path.join("data", "simulation.py")
+    if os.path.exists(sim_path):
+        spec = importlib.util.spec_from_file_location("simulation", sim_path)
+        mod = importlib.util.module_from_spec(spec)
+        assert spec and spec.loader
+        spec.loader.exec_module(mod)  # type: ignore
+        return mod
+    raise ImportError("simulation.py not found in project root or ./data")
+
 # ---------- Tabs ----------
-home_tab, dash_tab = st.tabs(["Home", "Dashboard"])  # Native tabs for top navigation
+home_tab, dash_tab = st.tabs(["Home", "Dashboard"])
 
 with home_tab:
     tpl.render_home()
 
 with dash_tab:
+    # Simulation bar at the very top
+    if tpl.simulation_bar():
+        log_buf = StringIO()
+        try:
+            sim = _load_simulation_module()
+            with st.spinner("Running simulation..."):
+                with redirect_stdout(log_buf):
+                    # Force non-interactive mode for Streamlit runs
+                    if hasattr(sim, "simulate"):
+                        sim.simulate(interactive=False)  # writes data/sim_final_inventory.csv
+                    else:
+                        print("ERROR: simulate() not found in simulation module")
+            st.success("Simulation complete.")
+        except Exception as e:
+            log_buf.write(f"\nERROR: {e}\n")
+            st.error("Simulation failed. See log for details.")
+        tpl.simulation_results_panel(log_buf.getvalue(), "data/sim_final_inventory.csv")
+
+    # Dashboard header
     st.markdown(
         '<div class="section-title" id="dashboard">AI-powered insights for optimized decision making</div>'
         '<div class="small">Drive lower carrying costs and fewer stockouts with data-backed reorder plans.</div>',
         unsafe_allow_html=True
     )
+
+    # Render dashboard sections
     tpl.render_dashboard(
         sales_df=sales_df if sales_df is not None else pd.DataFrame(),
         latest_inv=latest_inv if latest_inv is not None else pd.DataFrame(),

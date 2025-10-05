@@ -1,6 +1,7 @@
 # template.py
-import streamlit as st
+import os
 import pandas as pd
+import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
 
@@ -61,6 +62,7 @@ def inject_css():
     }
     </style>
     """, unsafe_allow_html=True)
+
 # ---------- Home (Landing) ----------
 def render_home():
     st.markdown('<div class="section-title">SecondBrainn for Inventory</div>', unsafe_allow_html=True)
@@ -157,6 +159,27 @@ def chart_monthly_mix(mix_pct: pd.DataFrame):
     fig.update_layout(height=320, margin=dict(l=24, r=18, t=26, b=26),
                       paper_bgcolor="rgba(0,0,0,0)", font_color="#e2e8f0")
     st.plotly_chart(fig, use_container_width=True, theme=None)
+
+# ---------- Simulation UI ----------
+def simulation_bar():
+    cols = st.columns([1, 8])
+    clicked = False
+    with cols[0]:
+        clicked = st.button("Run simulation", type="primary")
+    with cols[1]:
+        st.markdown('<div class="small">Runs day‑by‑day orders using ROP, EOQ and truckload rules, then writes data/sim_final_inventory.csv.</div>', unsafe_allow_html=True)
+    return clicked
+
+def simulation_results_panel(log_text: str, result_path: str = "data/sim_final_inventory.csv"):
+    with st.expander("View simulation log", expanded=False):
+        st.code(log_text or "(no output)")
+    if os.path.exists(result_path):
+        st.download_button(
+            "Download final inventory (CSV)",
+            data=open(result_path, "rb").read(),
+            file_name="sim_final_inventory.csv",
+            mime="text/csv",
+        )
 
 # ---------- Dashboard compositor ----------
 def render_dashboard(sales_df, latest_inv, eoq_df, rop_df, mix_pct, visible_sections):
