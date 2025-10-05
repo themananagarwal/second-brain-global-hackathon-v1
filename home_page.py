@@ -104,13 +104,12 @@ def render_home_page():
       }
 
       .btn-secondary {
-        background:transparent;
-        color:#fff;
-        border-color:rgba(255,255,255,.5);
+        background:#fff;
+        color:#0ea5e9;
       }
 
       .btn-primary:hover { background:#f0f9ff; }
-      .btn-secondary:hover { border-color:#fff; }
+      .btn-secondary:hover { background:#f0f9ff; }
 
       .mini-feats {
         display:flex;
