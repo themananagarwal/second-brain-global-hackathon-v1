@@ -10,7 +10,6 @@ def render_home_page():
     logo_path = assets_dir / "brain.svg"
     demo_path = assets_dir / "Demo.jpg"
 
-    # Read & encode images
     logo_b64 = base64.b64encode(logo_path.read_bytes()).decode("utf-8")
     demo_b64 = base64.b64encode(demo_path.read_bytes()).decode("utf-8")
 
@@ -20,7 +19,7 @@ def render_home_page():
       .hero-transparent {
         background: transparent;
         border: none;
-        padding: 4rem 2rem 0;   /* bottom 0 so buttons sit snug below */
+        padding: 4rem 2rem 3rem;
         color: #fff;
       }
 
@@ -39,6 +38,7 @@ def render_home_page():
         flex: 1 1 48%;
         min-width: 320px;
         text-align: left;
+        background: transparent;
       }
 
       .brand {
@@ -46,12 +46,13 @@ def render_home_page():
         align-items: center;
         gap: .6rem;
         margin-bottom: 1.25rem;
+        background: transparent;
       }
 
       .brand img {
         width: 32px;
         height: 32px;
-        filter: brightness(0) invert(1); /* force white logo */
+        filter: brightness(0) invert(1);
       }
 
       .brand .name {
@@ -66,49 +67,29 @@ def render_home_page():
         line-height: 1.05;
         margin-bottom: 1rem;
         text-align: left;
+        background: transparent;
       }
 
       .hero-subtitle {
-        margin: 0 0 1.75rem;
+        margin: 0 0 2rem;
         color: rgba(255,255,255,.9);
         font-size: 1.1rem;
-        max-width: 520px;
+        max-width: 500px;
+        background: transparent;
       }
 
-      .mini-feats {
-        display:flex;
-        gap:1.25rem;
-        flex-wrap:wrap;
-        color: rgba(255,255,255,0.9);
-        font-size: 0.95rem;
-      }
-
-      .hero-right {
-        flex: 1 1 46%;
-        min-width: 300px;
-        text-align: right;
-      }
-
-      .hero-right img {
-        max-width: 100%;
-        height: auto;
-        border-radius: 1rem;
-        box-shadow: 0 12px 40px rgba(0,0,0,0.35);
-      }
-
-      /* Buttons row BELOW the two-column hero, left-aligned to same container */
-      .hero-actions {
-        max-width: 1200px;
-        margin: 1.5rem auto 0;  /* space under hero */
+      .hero-buttons {
         display: flex;
         gap: .75rem;
+        flex-wrap: wrap;
+        margin-bottom: 1.5rem;
         background: transparent;
       }
 
       .btn {
         display:inline-flex;
-        align-items:center;  /* center is valid */
-        justify-content:center;
+        align-items:left;
+        justify-content:left;
         padding:.8rem 1.2rem;
         border-radius:.75rem;
         font-weight:700;
@@ -123,22 +104,45 @@ def render_home_page():
       }
 
       .btn-secondary {
-        background:#fff;     /* you set both as white; keep as requested */
+        background:#fff;
         color:#0ea5e9;
       }
 
-      .btn-primary:hover,
+      .btn-primary:hover { background:#f0f9ff; }
       .btn-secondary:hover { background:#f0f9ff; }
 
-      /* Keep Streamlit markdown blocks transparent */
+      .mini-feats {
+        display:flex;
+        gap:1.25rem;
+        flex-wrap:wrap;
+        color: rgba(255,255,255,0.9);
+        font-size: 0.95rem;
+        background: transparent;
+      }
+
+      .hero-right {
+        flex: 1 1 46%;
+        min-width: 300px;
+        text-align: right;
+        background: transparent;
+      }
+
+      .hero-right img {
+        max-width: 100%;
+        height: auto;
+        border-radius: 1rem;
+        box-shadow: 0 12px 40px rgba(0,0,0,0.35);
+      }
+
+      /* Remove Streamlit’s white background padding */
       section[data-testid="stMarkdownContainer"] {
         background: transparent !important;
       }
     </style>
     """, unsafe_allow_html=True)
 
-    # --- HERO SECTION (two columns: text left, image right) ---
-    hero_html = f"""
+    # --- HERO SECTION ---
+    html = f"""
 <div class="hero-transparent">
   <div class="hero-container">
     <div class="hero-left">
@@ -146,14 +150,15 @@ def render_home_page():
         <img src="data:image/svg+xml;base64,{logo_b64}" alt="Second Brain logo" />
         <div class="name">Second Brain</div>
       </div>
-
       <div class="hero-title">Your Business<br>Optimization<br>Engine</div>
-
       <div class="hero-subtitle">
         Skip the prescriptive processes. Let AI make intelligent decisions for your business.
         From inventory optimization to operational efficiency – your second brain handles it all.
       </div>
-
+      <div class="hero-buttons">
+        <a href="#" class="btn btn-primary">Get Started Today →</a>
+        <a href="#" class="btn btn-secondary">Watch Demo</a>
+      </div>
       <div class="mini-feats">
         <span>📊 Real-time Analytics</span>
         <span>⚡ Instant Optimization</span>
@@ -165,14 +170,9 @@ def render_home_page():
     </div>
   </div>
 </div>
-
-<!-- Buttons row below hero, left-aligned with container -->
-<div class="hero-actions">
-  <a href="#" class="btn btn-primary">Get Started Today →</a>
-  <a href="#" class="btn btn-secondary">Watch Demo</a>
-</div>
 """
-    st.markdown(textwrap.dedent(hero_html), unsafe_allow_html=True)
+    
+    st.markdown(textwrap.dedent(html), unsafe_allow_html=True)
 
     # --- Features Section ---
     st.markdown("""
