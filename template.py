@@ -309,6 +309,11 @@ def inject_global_css():
         border-bottom: 1px solid var(--color-border);
         padding: var(--spacing-sm) 0;
         margin-bottom: var(--spacing-lg);
+                
+         /* Add these lines 👇 */
+        position: sticky;
+        top: 0;
+        z-index: 1000;
     }
 
     .nav-brand {
