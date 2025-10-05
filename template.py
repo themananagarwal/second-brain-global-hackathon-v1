@@ -64,7 +64,7 @@ def inject_global_css():
         --color-error: #DC3545;
 
         /* Chart Colors */
-        --color-chart-text: #000000;
+        --color-chart-text: #374151;
         --color-chart-grid: rgba(148, 163, 184, 0.1);
 
         /* Spacing (8px grid) */
