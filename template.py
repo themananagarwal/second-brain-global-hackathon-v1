@@ -22,14 +22,23 @@ def inject_global_css():
     footer {visibility: hidden;}
 
     /* App/Page background */
-    html, body, .stApp {
-        background-color: #F8F9FA;
+    /* CHANGED: force a fixed blue gradient across the whole app */
+    html, body, .stApp,
+    .stApp > div,                       /* older builds */
+    .stAppViewContainer,                /* newer builds */
+    [data-testid="stAppViewContainer"]  /* testid fallback */
+    {
+        background: linear-gradient(135deg, #00BFFF 0%, #0099E5 100%) !important;
+        background-attachment: fixed !important;
+        min-height: 100vh;
     }
 
     .main .block-container {
         padding-top: 2rem;
         padding-bottom: 2rem;
         max-width: 100%;
+        /* keep transparent so the gradient shows through */
+        background: transparent !important;
     }
 
     /* ========================= */
