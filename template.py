@@ -1,5 +1,4 @@
 # template.py
-
 import streamlit as st
 
 
@@ -22,8 +21,8 @@ def inject_global_css():
     header {visibility: hidden;}
     footer {visibility: hidden;}
 
-    /* Reset Default Streamlit Styles */
-    .stApp {
+    /* App/Page background */
+    html, body, .stApp {
         background-color: #F8F9FA;
     }
 
@@ -45,7 +44,7 @@ def inject_global_css():
 
         /* Neutral Colors */
         --color-white: #FFFFFF;
-        --color-background: transparent;
+        --color-background: #F8F9FA;
         --color-text-primary: #2C3E50;
         --color-text-light: #6C757D;
         --color-border: #E5E7EB;
@@ -76,6 +75,9 @@ def inject_global_css():
 
         /* Typography */
         --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+        /* HERO background hook (default = gradient) */
+        --hero-background: var(--color-gradient);
     }
 
     /* ========================= */
@@ -318,8 +320,9 @@ def inject_global_css():
     /* HERO SECTION */
     /* ========================= */
 
+    /* Default hero now uses a variable so you can override or set transparent via helper classes */
     .hero-section {
-        background: var(--color-gradient);
+        background: var(--hero-background);
         border-radius: var(--radius-card);
         padding: var(--spacing-xl) var(--spacing-md);
         margin-bottom: var(--spacing-lg);
@@ -351,6 +354,18 @@ def inject_global_css():
     @keyframes float {
         0%, 100% { transform: translateY(0px); }
         50% { transform: translateY(-10px); }
+    }
+
+    /* Transparent hero helpers (scoped, won’t affect rest of page) */
+    .hero-transparent,
+    .hero-section.is-transparent,
+    .hero-section--transparent {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        border-radius: 0 !important;
+        /* optionally: padding: 0 !important; */
+        color: inherit;
     }
 
     /* ========================= */
@@ -515,25 +530,11 @@ def inject_global_css():
     /* ========================= */
 
     @media (max-width: 768px) {
-        .hero-title {
-            font-size: 2.5rem;
-        }
-
-        .hero-subtitle {
-            font-size: 1rem;
-        }
-
-        .metric-value {
-            font-size: 1.5rem;
-        }
-
-        .section-title {
-            font-size: 1.5rem;
-        }
-
-        .card {
-            padding: var(--spacing-sm);
-        }
+        .hero-title { font-size: 2.5rem; }
+        .hero-subtitle { font-size: 1rem; }
+        .metric-value { font-size: 1.5rem; }
+        .section-title { font-size: 1.5rem; }
+        .card { padding: var(--spacing-sm); }
     }
 
     /* ========================= */
