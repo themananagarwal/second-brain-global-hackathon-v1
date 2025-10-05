@@ -1,20 +1,21 @@
+# app.py
 import os
 import pandas as pd
+import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
-import streamlit as st
 
-# Local modules
 from Modules.data_ingestion import load_sales_data
 from Modules.inventory_tracker import build_inventory_timeline
 from Modules.rolling_eoq import calculate_rolling_eoq
 from Modules.reorder_evaluator import evaluate_reorder_points
-from Modules.trends_analysis import extract_product_type, calculate_monthly_mix
+from Modules.trends_analysis import calculate_monthly_mix
+import template as tpl  # design layer
 
-# ---------------- Page setup ----------------
+# ---------- Page ----------
 st.set_page_config(page_title="Inventory & Orders", layout="wide")
 
-# ---------------- Paths ----------------
+# ---------- Paths ----------
 DATA_DIR = "data"
 os.makedirs(DATA_DIR, exist_ok=True)
 os.makedirs("outputs", exist_ok=True)
@@ -27,88 +28,17 @@ LATEST_INV_CSV = os.path.join(DATA_DIR, "latest_inventory.csv")
 EOQ_OUT_CSV = os.path.join("outputs", "eoq_results.csv")
 REORDER_EVAL_CSV = os.path.join(DATA_DIR, "reorder_evaluation.csv")
 
-# ---------------- Global CSS: spacing and card styling ----------------
-st.markdown("""
-<style>
-:root{
-  --gap: 16px;
-  --gap-lg: 22px;
-  --bg: #0b1220; --card:#0f172a; --muted:#94a3b8; --text:#e2e8f0;
-}
+# ---------- Styles ----------
+tpl.inject_css()
 
-/* Global page padding */
-html, body, [data-testid="stAppViewContainer"]{
-  background: var(--bg); color: var(--text);
-  padding: 12px 18px;
-}
-
-/* Add gutters between columns */
-div[data-testid="stHorizontalBlock"]{ margin-left: -10px; margin-right: -10px; }
-div[data-testid="column"]{ padding-left: 10px; padding-right: 10px; }
-
-/* Section headings spacing */
-.section-title{ font-size:22px; font-weight:700; margin: 2px 0 10px; }
-.h2{ font-size:16px; font-weight:600; margin: 16px 0 10px; }
-.small{ color: var(--muted); font-size: 12px; }
-
-/* Card look + spacing for common elements */
-div[data-testid="stPlotlyChart"],
-div[data-testid="stDataFrame"],
-div[data-testid="stMetric"],
-div[data-baseweb="notification"]{
-  border: 1px solid rgba(148,163,184,0.12);
-  background: var(--card);
-  border-radius: 12px;
-  padding: 16px;
-  margin-bottom: var(--gap-lg);
-  box-shadow: 0 0 0 1px rgba(99,102,241,0.05), 0 8px 24px rgba(2,6,23,0.45);
-  overflow: hidden;
-}
-
-/* Extra breathing room for metrics */
-div[data-testid="stMetric"]{ padding: 18px; }
-
-/* KPI typography */
-div[data-testid="stMetricLabel"] p { color: #94a3b8 !important; font-size: 13px; margin-bottom: 6px; }
-div[data-testid="stMetricValue"]   { color: #e2e8f0 !important; font-size: 28px; font-weight: 800; }
-div[data-testid="stMetricDelta"]   { color: #86efac !important; font-weight: 600; }
-div[data-testid="stMetricDelta"] span{
-  background: rgba(34,197,94,0.15); padding: 2px 8px; border-radius: 999px;
-}
-
-/* Plotly modebar positioning */
-.js-plotly-plot .modebar{
-  top: 8px !important; right: 8px !important;
-  background: rgba(2,6,23,0.35) !important; border-radius: 8px;
-}
-
-/* Buttons that look like primary CTAs */
-a.cta, button.cta {
-  display:inline-block; background:#6366f1; color:#0b1220; padding:10px 14px; 
-  border-radius:10px; text-decoration:none; font-weight:700; border:none;
-}
-a.cta:hover, button.cta:hover { filter:brightness(1.1); }
-
-/* Landing page hero card */
-.hero{
-  border: 1px solid rgba(148,163,184,0.12);
-  background: #0f172a;
-  border-radius: 14px;
-  padding: 18px;
-  margin-bottom: 20px;
-  box-shadow: 0 0 0 1px rgba(99,102,241,0.05), 0 8px 24px rgba(2,6,23,0.45);
-}
-</style>
-""", unsafe_allow_html=True)  # CSS via st.markdown for layout, spacing, and CTA styling [web:61]
-
-# ---------------- Sidebar: Controls & Navigation (used by Dashboard tab) ----------------
+# ---------- Sidebar Controls ----------
 st.sidebar.header("Controls")
 lookback_days = st.sidebar.number_input("Demand lookback (days)", 30, 365, 365, 10)
 default_lead_time = st.sidebar.number_input("Default lead time (days)", 1, 60, 7, 1)
 default_service = st.sidebar.selectbox("Default service level", [0.90, 0.95, 0.975, 0.99], 1)
 min_safety = st.sidebar.number_input("Min safety stock", 0, 10000, 10, 5)
 min_rop = st.sidebar.number_input("Min reorder point", 0, 10000, 20, 5)
-rebuild = st.sidebar.button("Rebuild inventory + recompute EOQ/ROP")  # Sidebar inputs feed the compute pipeline [attached_file:9]
+rebuild = st.sidebar.button("Rebuild inventory + recompute EOQ/ROP")
 
 st.sidebar.markdown("---")
 st.sidebar.subheader("Dashboard sections")
@@ -122,18 +52,18 @@ ALL_SECTIONS = [
     "Reorder suggestions",
     "Monthly mix",
 ]
-visible = st.sidebar.multiselect("Show sections", ALL_SECTIONS, default=ALL_SECTIONS)  # Toggle visibility within Dashboard tab [attached_file:9]
+visible = st.sidebar.multiselect("Show sections", ALL_SECTIONS, default=ALL_SECTIONS)
 
-# ---------------- Data helpers ----------------
+# ---------- Data helpers ----------
 @st.cache_data(show_spinner=False)
 def load_sales():
-    return load_sales_data(SALES_XLSX, sheet_name="Sheet1")  # Cached for fast tab switching [attached_file:9]
+    return load_sales_data(SALES_XLSX, sheet_name="Sheet1")
 
 def try_read_csv(path, cols=None):
     try:
         return pd.read_csv(path)
     except Exception:
-        return pd.DataFrame(columns=cols or [])  # Safe loads before first compute [attached_file:9]
+        return pd.DataFrame(columns=cols or [])
 
 def compute_pipeline():
     inv_timeline, latest_inv = build_inventory_timeline(
@@ -146,7 +76,6 @@ def compute_pipeline():
     sales_df = load_sales()
     sales_df["Date"] = pd.to_datetime(sales_df["Date"], errors="coerce")
 
-    # SKU weights for EOQ
     sku_weights = dict(zip(sales_df["Particular"], sales_df["Weight Per Piece"])) if "Weight Per Piece" in sales_df.columns else {}
 
     eoq_df = calculate_rolling_eoq(
@@ -170,13 +99,17 @@ def compute_pipeline():
         min_reorder_point=min_rop,
     )
     rop_df.to_csv(REORDER_EVAL_CSV, index=False)
-    return inv_timeline, latest_inv, sales_df, eoq_df, rop_df  # Keeps prior pipeline intact for Dashboard tab [attached_file:9]
 
-# ---------------- Run / Load pipeline once upfront ----------------
+    # Monthly mix for area chart
+    _, mix_pct = calculate_monthly_mix(sales_df)
+
+    return inv_timeline, latest_inv, sales_df, eoq_df, rop_df, mix_pct
+
+# ---------- Run / Load ----------
 if rebuild:
     with st.spinner("Recomputing…"):
-        inv_timeline, latest_inv, sales_df, eoq_df, rop_df = compute_pipeline()
-        st.success("Done.")  # Compute step mirrors original behavior [attached_file:9]
+        inv_timeline, latest_inv, sales_df, eoq_df, rop_df, mix_pct = compute_pipeline()
+        st.success("Done.")
 else:
     sales_df = None
     try:
@@ -187,159 +120,29 @@ else:
     latest_inv = try_read_csv(LATEST_INV_CSV, ["Particular","Quantity"])
     eoq_df     = try_read_csv(EOQ_OUT_CSV, ["Particular","EOQ"])
     rop_df     = try_read_csv(REORDER_EVAL_CSV, ["Particular","reorder_point","inventory_position","need_reorder","suggested_order_qty","lead_time_days","service_level","Rate"])
+    # Safe monthly mix when sales missing
+    if sales_df is not None and not sales_df.empty and "Date" in sales_df.columns and "Particular" in sales_df.columns:
+        _, mix_pct = calculate_monthly_mix(sales_df)
+    else:
+        mix_pct = pd.DataFrame()
 
-# ---------------- Helpers: section renderers for Dashboard ----------------
-def card_header(title: str):
-    st.markdown(f'<div class="h2">{title}</div>', unsafe_allow_html=True)  # Simple header per card [web:61]
-
-def show_kpis():
-    col1, col2, col3, col4 = st.columns(4)
-    total_rev = 0.0
-    if sales_df is not None and {"Quantity","Rate"}.issubset(sales_df.columns):
-        total_rev = float((sales_df["Quantity"] * sales_df["Rate"]).sum())
-    active = int(rop_df["need_reorder"].sum()) if "need_reorder" in rop_df.columns else 0
-    with col1: st.metric(label="Total Revenue", value=f"₹{total_rev:,.0f}", delta="+12.5%")
-    with col2: st.metric(label="Active Orders", value=f"{active}", delta="+8.2%")
-    with col3: st.metric(label="Efficiency Score", value="94%", delta="+3.1%")
-    with col4: st.metric(label="Cost Savings", value="₹12,450", delta="+15.8%")  # st.metric suits big-number KPIs on dark UI [web:61]
-
-def show_sales_vs_orders():
-    card_header("Sales vs Orders")
-    if sales_df is None or sales_df.empty or not {"Date","Quantity"}.issubset(sales_df.columns):
-        st.info("Sales XLSX missing or invalid. Place it under ./data and click Rebuild.")
-        return
-    s = sales_df.copy()
-    s["Date"] = pd.to_datetime(s["Date"])
-    monthly = s.groupby(s["Date"].dt.to_period("M")).agg(Sales=("Value","sum"), Orders=("Quantity","sum")).reset_index()
-    monthly["Date"] = monthly["Date"].dt.to_timestamp()
-    fig = go.Figure()
-    fig.add_bar(x=monthly["Date"], y=monthly["Sales"], name="Sales", marker_color="#6366f1")
-    fig.add_scatter(x=monthly["Date"], y=monthly["Orders"], name="Orders", mode="lines+markers", line=dict(color="#06b6d4", width=2))
-    fig.update_layout(height=320, margin=dict(l=24, r=18, t=26, b=26),
-                      paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(16,24,39,1)", font_color="#e2e8f0")
-    st.plotly_chart(fig, use_container_width=True, theme=None)  # Plotly respects container width and margins [web:72]
-
-def show_inventory_trend():
-    card_header("Inventory trend")
-    if latest_inv.empty or "Quantity" not in latest_inv.columns:
-        st.info("Inventory not available. Click Rebuild.")
-        return
-    inv = latest_inv.copy()
-    inv["Quantity"] = pd.to_numeric(inv["Quantity"], errors="coerce").fillna(0)
-    inv = inv.sort_values("Particular")
-    eoq_map = dict(zip(eoq_df.get("Particular", []), eoq_df.get("EOQ", []))) if not eoq_df.empty else {}
-    inv["Optimal"] = inv["Particular"].map(eoq_map).fillna(inv["Quantity"].median() if len(inv) else 0)
-    fig2 = go.Figure()
-    fig2.add_scatter(x=inv["Particular"], y=inv["Quantity"], name="Stock", mode="lines", line=dict(color="#22c55e"))
-    fig2.add_scatter(x=inv["Particular"], y=inv["Optimal"], name="Optimal", mode="lines", line=dict(color="#f59e0b", dash="dash"))
-    fig2.update_layout(height=320, margin=dict(l=24, r=18, t=26, b=26),
-                       paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(16,24,39,1)", font_color="#e2e8f0")
-    st.plotly_chart(fig2, use_container_width=True, theme=None)  # Margin bump avoids overlaps [web:72]
-
-def show_category_mix():
-    card_header("Category mix")
-    if sales_df is None or sales_df.empty or "Particular" not in sales_df.columns:
-        st.info("No category data yet.")
-        return
-    s = sales_df.copy()
-    s["Category"] = extract_product_type(s["Particular"])
-    pie = s.groupby("Category")["Quantity"].sum().reset_index()
-    fig3 = px.pie(pie, names="Category", values="Quantity",
-                  color_discrete_sequence=["#6366f1","#06b6d4","#22c55e","#f59e0b","#ef4444"])
-    fig3.update_layout(height=320, margin=dict(l=24, r=18, t=26, b=26),
-                       paper_bgcolor="rgba(0,0,0,0)", font_color="#e2e8f0")
-    st.plotly_chart(fig3, use_container_width=True, theme=None)  # Pie chart gets same padding rhythm [web:72]
-
-def show_eoq_by_sku():
-    card_header("EOQ by SKU")
-    if eoq_df.empty or "EOQ" not in eoq_df.columns:
-        st.info("EOQ not computed. Click Rebuild.")
-        return
-    top = eoq_df.sort_values("EOQ", ascending=False).head(15)
-    fig = px.bar(top, x="Particular", y="EOQ", color_discrete_sequence=["#6366f1"])
-    fig.update_layout(height=320, margin=dict(l=24, r=18, t=26, b=26),
-                      paper_bgcolor="rgba(0,0,0,0)", font_color="#e2e8f0")
-    st.plotly_chart(fig, use_container_width=True, theme=None)  # Uniform margins prevent label clipping [web:72]
-
-def show_inventory_vs_rop():
-    card_header("Inventory vs ROP")
-    if rop_df.empty or not {"Particular","inventory_position","reorder_point"}.issubset(rop_df.columns):
-        st.info("Reorder evaluation not available yet.")
-        return
-    table = rop_df[["Particular","inventory_position","reorder_point","need_reorder","suggested_order_qty"]] \
-            .sort_values(["need_reorder","Particular"], ascending=[False, True])
-    st.dataframe(table, use_container_width=True)  # DataFrame inherits card padding [web:61]
-
-def show_reorder_suggestions():
-    card_header("Reorder suggestions")
-    if rop_df.empty or "need_reorder" not in rop_df.columns:
-        st.info("No suggestions to display.")
-        return
-    suggest = rop_df[rop_df["need_reorder"] == True][["Particular","suggested_order_qty","EOQ","lead_time_days","service_level"]]
-    st.dataframe(suggest.sort_values("suggested_order_qty", ascending=False), use_container_width=True)  # Consistent spacing [web:61]
-
-def show_monthly_mix():
-    card_header("Monthly mix")
-    if sales_df is None or sales_df.empty:
-        st.info("No sales data.")
-        return
-    _, mix_pct = calculate_monthly_mix(sales_df)
-    mix_pct = mix_pct.reset_index().melt(id_vars="YearMonth", var_name="Type", value_name="Pct")
-    mix_pct["YearMonth"] = mix_pct["YearMonth"].astype(str)
-    fig = px.area(mix_pct, x="YearMonth", y="Pct", color="Type",
-                  color_discrete_sequence=["#6366f1","#06b6d4","#22c55e","#f59e0b"])
-    fig.update_layout(height=320, margin=dict(l=24, r=18, t=26, b=26),
-                      paper_bgcolor="rgba(0,0,0,0)", font_color="#e2e8f0")
-    st.plotly_chart(fig, use_container_width=True, theme=None)  # Area chart spacing aligned with others [web:72]
-
-# ---------------- Tabs: Home (landing) and Dashboard ----------------
-home_tab, dash_tab = st.tabs(["Home", "Dashboard"])  # Native tab navigation at the top of the app [web:92]
+# ---------- Tabs ----------
+home_tab, dash_tab = st.tabs(["Home", "Dashboard"])  # Native tabs for top navigation
 
 with home_tab:
-    st.markdown('<div class="section-title">SecondBrainn for Inventory</div>', unsafe_allow_html=True)
-    st.markdown('<div class="hero">Drive lower carrying costs and fewer stockouts with AI-backed reorder plans and live dashboards.</div>', unsafe_allow_html=True)
-    c1, c2 = st.columns(2)
-    with c1:
-        st.markdown("#### What’s inside")
-        st.markdown("- Real-time EOQ and ROP suggestions\n- Inventory timeline and category mix\n- Downloadable tables and interactive charts")
-        st.markdown('<a class="cta" href="#dashboard">Go to Dashboard</a>', unsafe_allow_html=True)
-    with c2:
-        st.markdown("#### Getting started")
-        st.markdown("- Place data files in ./data (Sales, Purchase, Base Inventory)\n- Use sidebar Controls, then click Rebuild\n- Toggle sections via Dashboard sections")
-    st.markdown("")  # spacer
+    tpl.render_home()
 
 with dash_tab:
-    # Header
     st.markdown(
         '<div class="section-title" id="dashboard">AI-powered insights for optimized decision making</div>'
         '<div class="small">Drive lower carrying costs and fewer stockouts with data-backed reorder plans.</div>',
         unsafe_allow_html=True
     )
-
-    # Render selected sections
-    if "KPIs" in visible:
-        show_kpis()
-
-    cols_top = st.columns((7,6,6))
-    with cols_top[0]:
-        if "Sales vs Orders" in visible:
-            show_sales_vs_orders()
-    with cols_top[1]:
-        if "Inventory trend" in visible:
-            show_inventory_trend()
-    with cols_top[2]:
-        if "Category mix" in visible:
-            show_category_mix()
-
-    cols_bottom = st.columns((7,7))
-    with cols_bottom[0]:
-        if "EOQ by SKU" in visible:
-            show_eoq_by_sku()
-    with cols_bottom[1]:
-        if "Monthly mix" in visible:
-            show_monthly_mix()
-
-    if "Inventory vs ROP" in visible:
-        show_inventory_vs_rop()
-    if "Reorder suggestions" in visible:
-        show_reorder_suggestions()
+    tpl.render_dashboard(
+        sales_df=sales_df if sales_df is not None else pd.DataFrame(),
+        latest_inv=latest_inv if latest_inv is not None else pd.DataFrame(),
+        eoq_df=eoq_df if eoq_df is not None else pd.DataFrame(),
+        rop_df=rop_df if rop_df is not None else pd.DataFrame(),
+        mix_pct=mix_pct if mix_pct is not None else pd.DataFrame(),
+        visible_sections=visible
+    )
