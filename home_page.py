@@ -206,43 +206,14 @@ def render_home_page():
 
     with col1:
         st.markdown("""
-        <div class="rounded-lg text-card-foreground shadow-sm relative group hover:shadow-elegant transition-all duration-300 border-0 bg-card\\/80 backdrop-blur-sm">
-        <div class="flex flex-col space-y-1.5 p-6 pb-4">
-            <div class="flex items-center justify-between mb-4">
-            <div class="p-3 bg-gradient-primary rounded-xl">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                    viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                    stroke-linecap="round" stroke-linejoin="round"
-                    class="lucide lucide-brain h-6 w-6 text-primary-foreground">
-                <path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"></path>
-                <path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"></path>
-                <path d="M15 13a4.5 4.5 0 0 1-3-4 4.5 4.5 0 0 1-3 4"></path>
-                <path d="M17.599 6.5a3 3 0 0 0 .399-1.375"></path>
-                <path d="M6.003 5.125A3 3 0 0 0 6.401 6.5"></path>
-                <path d="M3.477 10.896a4 4 0 0 1 .585-.396"></path>
-                <path d="M19.938 10.5a4 4 0 0 1 .585.396"></path>
-                <path d="M6 18a4 4 0 0 1-1.967-.516"></path>
-                <path d="M19.967 17.484A4 4 0 0 1 18 18"></path>
-                </svg>
-            </div>
-            <div class="inline-flex items-center rounded-full border px-2.5 py-0.5 font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80 text-xs">
-                Core Feature
-            </div>
-            </div>
-
-            <h3 class="font-semibold tracking-tight text-xl group-hover:text-primary transition-colors">
-            AI-Powered Decision Making
-            </h3>
-        </div>
-
-        <div class="p-6 pt-0">
-            <p class="text-muted-foreground text-base leading-relaxed">
-            Advanced algorithms analyze your business patterns and make optimal decisions automatically.
+        <div class="feature-card">
+            <div class="feature-icon">🎯</div>
+            <h3 class="feature-title" style="color: #0ea5e9;">AI-Powered Decision Making</h3>
+            <p class="feature-description">
+                Advanced algorithms analyze your business patterns and make optimal decisions automatically.
             </p>
         </div>
-        </div>
         """, unsafe_allow_html=True)
-
 
     with col2:
         st.markdown("""
