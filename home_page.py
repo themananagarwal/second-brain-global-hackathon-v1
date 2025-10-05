@@ -8,7 +8,7 @@ def render_home_page():
     <div class="hero-section">
         <div class="hero-title">
             Your Business<br>
-            <span style="color: #38bdf8;">Optimization</span><br>
+            Optimization<br>
             Engine
         </div>
         <div class="hero-subtitle">
