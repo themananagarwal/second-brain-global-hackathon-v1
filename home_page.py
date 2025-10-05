@@ -88,8 +88,8 @@ def render_home_page():
 
       .btn {
         display:inline-flex;
-        align-items:center;
-        justify-content:center;
+        align-items:left;
+        justify-content:left;
         padding:.8rem 1.2rem;
         border-radius:.75rem;
         font-weight:700;
