@@ -122,7 +122,7 @@ def render_dashboard_page(sales_df, latest_inv, eoq_df, rop_df, mix_pct):
     with col1:
         st.markdown("""
         <div class="chart-container">
-            <h3 class="chart-title" style="color: #000000;">📈 Daily Sales Trend</h3>
+            <h3 class="chart-title" style="color: #000000 !important;">📈 Daily Sales Trend</h3>
         """, unsafe_allow_html=True)
 
         try:
