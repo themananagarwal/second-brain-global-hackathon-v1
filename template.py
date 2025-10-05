@@ -47,11 +47,13 @@ def inject_css():
       top: 8px !important; right: 8px !important;
       background: rgba(2,6,23,0.35) !important; border-radius: 8px;
     }
+
     a.cta, button.cta {
       display:inline-block; background:#6366f1; color:#0b1220; padding:10px 14px; 
       border-radius:10px; text-decoration:none; font-weight:700; border:none;
     }
     a.cta:hover, button.cta:hover { filter:brightness(1.1); }
+
     .hero{
       border: 1px solid rgba(148,163,184,0.12);
       background: #0f172a;
@@ -88,7 +90,7 @@ def kpis(sales_df: pd.DataFrame, rop_df: pd.DataFrame):
     with col3: st.metric(label="Efficiency Score", value="94%", delta="+3.1%")
     with col4: st.metric(label="Cost Savings", value="₹12,450", delta="+15.8%")
 
-# ---------- Charts / Tables ----------
+# ---------- Charts / Tables (dashboard) ----------
 def chart_sales_vs_orders(sales_df: pd.DataFrame):
     st.markdown('<div class="h2">Sales vs Orders</div>', unsafe_allow_html=True)
     s = sales_df.copy()
@@ -161,50 +163,102 @@ def chart_monthly_mix(mix_pct: pd.DataFrame):
     st.plotly_chart(fig, use_container_width=True, theme=None)
 
 # ---------- Simulation UI ----------
-def simulation_bar():
-    cols = st.columns([1, 8])
+def simulation_bar_centered(disabled: bool = False):
+    left, mid, right = st.columns([2, 3, 2])
     clicked = False
-    with cols[0]:
-        clicked = st.button("Run simulation", type="primary")
-    with cols[1]:
-        st.markdown('<div class="small">Runs day‑by‑day orders using ROP, EOQ and truckload rules, then writes data/sim_final_inventory.csv.</div>', unsafe_allow_html=True)
+    with mid:
+        clicked = st.button("Run simulation", type="primary", use_container_width=True, disabled=disabled)
+    st.markdown('<div class="small" style="text-align:center;">Runs a 90‑day day‑by‑day sim using ROP/EOQ & truck rules, then writes CSV outputs.</div>', unsafe_allow_html=True)
     return clicked
 
-def simulation_results_panel(log_text: str, result_path: str = "data/sim_final_inventory.csv"):
-    with st.expander("View simulation log", expanded=False):
-        st.code(log_text or "(no output)")
-    if os.path.exists(result_path):
-        st.download_button(
-            "Download final inventory (CSV)",
-            data=open(result_path, "rb").read(),
-            file_name="sim_final_inventory.csv",
-            mime="text/csv",
-        )
+def _find_day_column(df: pd.DataFrame):
+    for c in ["day", "Day", "DAY", "date", "Date"]:
+        if c in df.columns:
+            return c
+    return None
 
-# ---------- Dashboard compositor ----------
-def render_dashboard(sales_df, latest_inv, eoq_df, rop_df, mix_pct, visible_sections):
-    if "KPIs" in visible_sections:
-        kpis(sales_df, rop_df)
-    cols_top = st.columns((7,6,6))
-    with cols_top[0]:
-        if "Sales vs Orders" in visible_sections and sales_df is not None and not sales_df.empty and {"Date","Quantity"}.issubset(sales_df.columns):
-            chart_sales_vs_orders(sales_df)
-    with cols_top[1]:
-        if "Inventory trend" in visible_sections and latest_inv is not None and not latest_inv.empty:
-            chart_inventory_trend(latest_inv, eoq_df if eoq_df is not None else pd.DataFrame())
-    with cols_top[2]:
-        if "Category mix" in visible_sections and sales_df is not None and not sales_df.empty:
-            chart_category_mix(sales_df)
+def _add_day_index(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.copy()
+    col = _find_day_column(df)
+    if col is None:
+        return df
+    if "date" in col.lower():
+        # Map unique sorted dates to 1..N
+        try:
+            d = pd.to_datetime(df[col])
+        except Exception:
+            return df
+        mapper = {v: i+1 for i, v in enumerate(sorted(d.dropna().unique()))}
+        df["__day_idx__"] = d.map(mapper)
+    else:
+        df["__day_idx__"] = pd.to_numeric(df[col], errors="coerce").astype("Int64")
+    return df
 
-    cols_bottom = st.columns((7,7))
-    with cols_bottom[0]:
-        if "EOQ by SKU" in visible_sections and eoq_df is not None and not eoq_df.empty:
-            chart_eoq(eoq_df)
-    with cols_bottom[1]:
-        if "Monthly mix" in visible_sections and mix_pct is not None and not mix_pct.empty:
-            chart_monthly_mix(mix_pct)
+def _day_filtered_table(df: pd.DataFrame, title: str):
+    df = _add_day_index(df)
+    if "__day_idx__" in df.columns:
+        min_day = int(df["__day_idx__"].min()) if pd.notna(df["__day_idx__"].min()) else 1
+        max_day = int(df["__day_idx__"].max()) if pd.notna(df["__day_idx__"].max()) else 90
+        start, end = st.slider(f"{title} — day range", min_value=min_day, max_value=max_day, value=(min_day, max_day))
+        view = df[(df["__day_idx__"] >= start) & (df["__day_idx__"] <= end)].drop(columns=["__day_idx__"])
+        st.dataframe(view, use_container_width=True)
+    else:
+        st.dataframe(df, use_container_width=True)
 
-    if "Inventory vs ROP" in visible_sections and rop_df is not None and not rop_df.empty and {"Particular","inventory_position","reorder_point"}.issubset(rop_df.columns):
-        table_inventory_vs_rop(rop_df)
-    if "Reorder suggestions" in visible_sections and rop_df is not None and not rop_df.empty and "need_reorder" in rop_df.columns:
-        table_reorder_suggestions(rop_df)
+def simulation_results_panel(log_text: str, base_dir: str = "data"):
+    # Known outputs (best‑effort; only render those that exist)
+    paths = {
+        "Daily summary": os.path.join(base_dir, "sim_daily_summary.csv"),
+        "Orders":        os.path.join(base_dir, "sim_orders.csv"),
+        "Backorders":    os.path.join(base_dir, "sim_backorders.csv"),
+        "Final inventory": os.path.join(base_dir, "sim_final_inventory.csv"),
+    }
+    tabs = st.tabs(["Daily summary", "Orders", "Backorders", "Final inventory", "Log", "Downloads"])
+    # Tab 1: Daily summary
+    with tabs[0]:
+        p = paths["Daily summary"]
+        if os.path.exists(p):
+            df = pd.read_csv(p)
+            _day_filtered_table(df, "Daily summary")
+        else:
+            st.info("No daily summary file found.")
+    # Tab 2: Orders
+    with tabs[1]:
+        p = paths["Orders"]
+        if os.path.exists(p):
+            df = pd.read_csv(p)
+            _day_filtered_table(df, "Orders")
+        else:
+            st.info("No orders file found.")
+    # Tab 3: Backorders
+    with tabs[2]:
+        p = paths["Backorders"]
+        if os.path.exists(p):
+            df = pd.read_csv(p)
+            _day_filtered_table(df, "Backorders")
+        else:
+            st.info("No backorders file found.")
+    # Tab 4: Final inventory
+    with tabs[3]:
+        p = paths["Final inventory"]
+        if os.path.exists(p):
+            df = pd.read_csv(p)
+            st.dataframe(df, use_container_width=True)
+            st.download_button("Download final inventory (CSV)", data=open(p, "rb").read(),
+                               file_name="sim_final_inventory.csv", mime="text/csv")
+        else:
+            st.info("No final inventory file found.")
+    # Tab 5: Raw log
+    with tabs[4]:
+        with st.expander("View simulation log", expanded=False):
+            st.code(log_text or "(no output)")
+    # Tab 6: Downloads
+    with tabs[5]:
+        any_file = False
+        for name, p in paths.items():
+            if os.path.exists(p):
+                any_file = True
+                st.download_button(f"Download {name} CSV", data=open(p, "rb").read(),
+                                   file_name=os.path.basename(p), mime="text/csv")
+        if not any_file:
+            st.info("No simulation CSV outputs available yet.")

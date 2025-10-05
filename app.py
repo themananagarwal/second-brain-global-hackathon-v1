@@ -15,7 +15,7 @@ from Modules.inventory_tracker import build_inventory_timeline
 from Modules.rolling_eoq import calculate_rolling_eoq
 from Modules.reorder_evaluator import evaluate_reorder_points
 from Modules.trends_analysis import calculate_monthly_mix
-import template as tpl  # design layer
+import template as tpl  # design & rendering layer
 
 # ---------- Page ----------
 st.set_page_config(page_title="Inventory & Orders", layout="wide")
@@ -71,6 +71,7 @@ def try_read_csv(path, cols=None):
         return pd.DataFrame(columns=cols or [])
 
 def compute_pipeline():
+    # Build inventory timeline and persist stock snapshot
     inv_timeline, latest_inv = build_inventory_timeline(
         sales_file=SALES_XLSX,
         purchase_file=PURCHASE_XLSX,
@@ -78,11 +79,14 @@ def compute_pipeline():
     )
     latest_inv.to_csv(LATEST_INV_CSV, index=False)
 
+    # Sales
     sales_df = load_sales()
     sales_df["Date"] = pd.to_datetime(sales_df["Date"], errors="coerce")
 
+    # SKU weights for EOQ
     sku_weights = dict(zip(sales_df["Particular"], sales_df["Weight Per Piece"])) if "Weight Per Piece" in sales_df.columns else {}
 
+    # EOQ
     eoq_df = calculate_rolling_eoq(
         sales_df,
         sku_weights=sku_weights,
@@ -90,6 +94,7 @@ def compute_pipeline():
     )
     eoq_df.to_csv(EOQ_OUT_CSV, index=False)
 
+    # ROP / reorder evaluation
     rop_df = evaluate_reorder_points(
         sales_file=SALES_XLSX,
         inventory_file=LATEST_INV_CSV,
@@ -130,7 +135,10 @@ else:
     else:
         mix_pct = pd.DataFrame()
 
-# --- replace the loader in app.py with this ---
+# ---------- Simulation integration ----------
+if "sim_running" not in st.session_state:
+    st.session_state["sim_running"] = False
+
 def _load_simulation_module():
     # 1) Preferred: Modules.simulation
     try:
@@ -138,16 +146,15 @@ def _load_simulation_module():
         return simulation
     except Exception:
         pass
-    # 2) Fallback: simulation.py at project root
+    # 2) Fallback: simulation in project root
     try:
         import simulation  # type: ignore
         return simulation
     except Exception:
         pass
-    # 3) Fallback by explicit path (rarely needed)
+    # 3) Fallback: explicit path under Modules
     sim_path = os.path.join("Modules", "simulation.py")
     if os.path.exists(sim_path):
-        import importlib.util
         spec = importlib.util.spec_from_file_location("simulation", sim_path)
         mod = importlib.util.module_from_spec(spec)
         assert spec and spec.loader
@@ -162,23 +169,29 @@ with home_tab:
     tpl.render_home()
 
 with dash_tab:
-    # Simulation bar at the very top
-    if tpl.simulation_bar():
+    # Centered “Run simulation” button; disabled while running; shows results on completion
+    clicked = tpl.simulation_bar_centered(disabled=st.session_state["sim_running"])
+    if clicked and not st.session_state["sim_running"]:
+        st.session_state["sim_running"] = True
         log_buf = StringIO()
         try:
             sim = _load_simulation_module()
             with st.spinner("Running simulation..."):
                 with redirect_stdout(log_buf):
-                    # Force non-interactive mode for Streamlit runs
                     if hasattr(sim, "simulate"):
-                        sim.simulate(interactive=False)  # writes data/sim_final_inventory.csv
+                        # Run in non-interactive mode for Streamlit
+                        sim.simulate(interactive=False)
                     else:
                         print("ERROR: simulate() not found in simulation module")
             st.success("Simulation complete.")
         except Exception as e:
             log_buf.write(f"\nERROR: {e}\n")
             st.error("Simulation failed. See log for details.")
-        tpl.simulation_results_panel(log_buf.getvalue(), "data/sim_final_inventory.csv")
+        finally:
+            st.session_state["sim_running"] = False
+
+        # Render filterable tables (90‑day slider where applicable) + downloads + raw log
+        tpl.simulation_results_panel(log_buf.getvalue(), base_dir="data")
 
     # Dashboard header
     st.markdown(
