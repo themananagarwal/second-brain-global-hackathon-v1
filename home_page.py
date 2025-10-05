@@ -194,7 +194,7 @@ def render_home_page():
         st.markdown("""
         <div class="feature-card">
             <div class="feature-icon">🎯</div>
-            <h3 class="feature-title">AI-Powered Decision Making</h3>
+            <h3 class="feature-title" style="color: #0ea5e9;">AI-Powered Decision Making</h3>
             <p class="feature-description">
                 Advanced algorithms analyze your business patterns and make optimal decisions automatically.
             </p>
@@ -205,7 +205,7 @@ def render_home_page():
         st.markdown("""
         <div class="feature-card">
             <div class="feature-icon">📈</div>
-            <h3 class="feature-title">Inventory Optimization</h3>
+            <h3 class="feature-title" style="color: #0ea5e9;">Inventory Optimization</h3>
             <p class="feature-description">
                 Know exactly when to order, how much to order, and in what combinations for maximum efficiency.
             </p>
@@ -216,7 +216,7 @@ def render_home_page():
         st.markdown("""
         <div class="feature-card">
             <div class="feature-icon">⏰</div>
-            <h3 class="feature-title">Real-Time Monitoring</h3>
+            <h3 class="feature-title" style="color: #0ea5e9;">Real-Time Monitoring</h3>
             <p class="feature-description">
                 Continuous tracking of your business metrics with instant alerts when action is needed.
             </p>
