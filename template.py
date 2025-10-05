@@ -306,7 +306,7 @@ def inject_global_css():
 
     .nav-container {
         background: var(--color-white);
-        border-bottom: 1px solid var(--color-border);
+        border-bottom: 0px solid var(--color-border);
         padding: var(--spacing-sm) 0;
         margin-bottom: var(--spacing-lg);
                 
