@@ -137,7 +137,7 @@ def inject_global_css():
     .stButton > button[data-baseweb="button"][kind="primary"] {
         background: var(--color-gradient) !important;
         color: var(--color-white) !important;
-        border: none !important;
+        border: 1px solid var(--color-white) !important;
         border-radius: var(--radius-button) !important;
         padding: 12px 24px !important;
         font-weight: 600 !important;
