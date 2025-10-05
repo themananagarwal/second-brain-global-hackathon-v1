@@ -305,50 +305,50 @@ def inject_global_css():
     /* ========================= */
 
     /* Make the bar fixed to the viewport */
-.nav-container {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;            /* full width */
-  z-index: 1000;
+    .nav-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;            /* full width */
+    z-index: 1000;
 
-  background: var(--color-white);
-  border-bottom: 1px solid var(--color-border);
+    background: var(--color-white);
+    border-bottom: 1px solid var(--color-border);
 
-  /* move padding to inner content so the bar spans edge-to-edge */
-  padding: 0;
-  height: 60px;        /* pick your height */
-}
+    /* move padding to inner content so the bar spans edge-to-edge */
+    padding: 0;
+    height: 50px;        /* pick your height */
+    }
 
-/* Optional inner wrapper to keep your old centered layout */
-.nav-inner {
-  max-width: 1200px;   /* whatever your page uses */
-  margin: 0 auto;
-  padding: var(--spacing-sm) var(--spacing-md);
-  display: flex;
-  align-items: left;
-  justify-content: space-between;
-}
+    /* Optional inner wrapper to keep your old centered layout */
+    .nav-inner {
+    max-width: 1200px;   /* whatever your page uses */
+    margin: 0 auto;
+    padding: var(--spacing-sm) var(--spacing-md);
+    display: flex;
+    align-items: left;
+    justify-content: space-between;
+    }
 
-/* Prevent content being hidden under the fixed bar */
-body {
-  padding-top: 64px;   /* same as .nav-container height */
-}
+    /* Prevent content being hidden under the fixed bar */
+    body {
+    padding-top: 64px;   /* same as .nav-container height */
+    }
 
-/* Small cleanup: 'left' isn’t valid for align-items */
-.nav-brand {
-  display: flex;
-  align-items: left;
-  gap: var(--spacing-xs);
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--color-primary-start);
-}
+    /* Small cleanup: 'left' isn’t valid for align-items */
+    .nav-brand {
+    display: flex;
+    align-items: left;
+    gap: var(--spacing-xs);
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--color-primary-start);
+    }
 
-.nav-brand-icon {
-  font-size: 1.5rem;
-  color: var(--color-primary-start);
-}
+    .nav-brand-icon {
+    font-size: 1.5rem;
+    color: var(--color-primary-start);
+    }
 
 
     /* ========================= */
