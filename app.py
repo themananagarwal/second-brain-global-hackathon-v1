@@ -239,11 +239,10 @@ def compute_pipeline():
                 sales_file=SALES_XLSX,
                 inventory_file=LATEST_INV_CSV,
                 eoq_file=EOQ_OUT_CSV,
-                service_level=0.95,
-                lead_time_days=7,
+                default_service_level=0.95,  # ← FIXED: was 'service_level'
+                default_lead_time_days=7,  # ← FIXED: was 'lead_time_days'
                 lookback_days=120
             )
-
             if results["rop_df"] is not None and not results["rop_df"].empty:
                 results["rop_df"].to_csv(REORDER_EVAL_CSV, index=False)
                 logger.info(f"Evaluated reorder points for {len(results['rop_df'])} SKUs")
