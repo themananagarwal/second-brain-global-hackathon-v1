@@ -7,29 +7,40 @@ from io import StringIO
 from contextlib import redirect_stdout
 import importlib.util
 import os
+import logging
+from datetime import datetime
 
+logger = logging.getLogger(__name__)
 
 def render_dashboard_page(sales_df, latest_inv, eoq_df, rop_df, mix_pct):
+    """Main dashboard rendering function with proper data validation"""
+
     # Dashboard Header
     st.markdown("""
     <div class="page-header" style="background: linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%); 
                                    padding: 2rem; border-radius: 1rem; margin-bottom: 2rem;">
         <h1 class="page-title" style="margin-bottom: 0.5rem;">Business Dashboard</h1>
-        <p class="page-subtitle">AI-powered insights for optimized decision making</p>
+        <p class="page-subtitle">Real-time insights powered by your business data</p>
     </div>
     """, unsafe_allow_html=True)
+
+    # Data status indicator
+    last_update = st.session_state.get("last_compute_time")
+    if last_update:
+        st.caption(f"📅 Last updated: {last_update.strftime('%Y-%m-%d %H:%M:%S')}")
 
     # Simulation Section
     render_simulation_section()
 
     # KPIs Section
-    render_kpi_cards(sales_df, rop_df)
+    render_kpi_cards(sales_df, latest_inv, eoq_df, rop_df)
 
     # Charts Section
     render_charts_section(sales_df, latest_inv, eoq_df, rop_df, mix_pct)
 
-    # AI Recommendations
-    render_ai_recommendations(rop_df)
+    # Product Recommendations (based on real data)
+    if rop_df is not None and not rop_df.empty:
+        render_real_recommendations(rop_df, latest_inv, eoq_df)
 
 
 def render_simulation_section():
@@ -37,78 +48,132 @@ def render_simulation_section():
     st.markdown("""
     <div class="card">
         <div class="card-header">
-            <h3 class="card-title">📈 AI-Powered Next Order Suggestion</h3>
-            <p class="card-subtitle">Based on historical demand patterns, seasonal trends, and current inventory levels, our AI recommends the following optimized order reducing carrying costs by 18%.</p>
+            <h3 class="card-title">📈 Inventory Simulation</h3>
+            <p class="card-subtitle">Simulate future inventory scenarios based on demand patterns and ordering policies.</p>
         </div>
     </div>
     """, unsafe_allow_html=True)
 
-    # Simulation Button (Centered)
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        if st.button("🚀 Run AI Simulation", use_container_width=True, type="primary"):
-            run_simulation()
-
-
-def render_kpi_cards(sales_df, rop_df):
-    """Render KPI metric cards"""
-    # Calculate metrics
-    total_rev = 0.0
-    if sales_df is not None and {"Quantity", "Rate"}.issubset(sales_df.columns):
-        total_rev = float((sales_df["Quantity"] * sales_df["Rate"]).sum())
-
-    active = int(rop_df["need_reorder"].sum()) if rop_df is not None and "need_reorder" in rop_df.columns else 0
-
+    # Simulation parameters
     col1, col2, col3, col4 = st.columns(4)
 
     with col1:
-        st.markdown("""
+        sim_days = st.number_input("Simulation Days", min_value=30, max_value=365, value=90, step=30)
+    with col2:
+        lead_time = st.number_input("Lead Time (days)", min_value=1, max_value=30, value=7, step=1)
+    with col3:
+        service_level = st.slider("Service Level", min_value=0.80, max_value=0.99, value=0.95, step=0.01, format="%.2f")
+    with col4:
+        st.write("")  # Spacing
+        st.write("")
+        run_sim = st.button("🚀 Run Simulation", use_container_width=True, type="primary")
+
+    if run_sim:
+        run_simulation(sim_days, lead_time, service_level)
+
+
+def render_kpi_cards(sales_df, latest_inv, eoq_df, rop_df):
+    """Render KPI metric cards with REAL calculated data"""
+
+    # Calculate real metrics
+    total_rev = 0.0
+    total_quantity = 0
+    avg_order_value = 0.0
+
+    if sales_df is not None and not sales_df.empty:
+        if "Quantity" in sales_df.columns and "Rate" in sales_df.columns:
+            # Calculate total revenue
+            sales_df_copy = sales_df.copy()
+            sales_df_copy["Value"] = pd.to_numeric(sales_df_copy.get("Quantity", 0), errors="coerce") * pd.to_numeric(sales_df_copy.get("Rate", 0), errors="coerce")
+            total_rev = float(sales_df_copy["Value"].sum())
+            total_quantity = int(pd.to_numeric(sales_df["Quantity"], errors="coerce").sum())
+
+            if total_quantity > 0:
+                avg_order_value = total_rev / len(sales_df)
+
+    # Items needing reorder
+    items_to_reorder = 0
+    if rop_df is not None and not rop_df.empty and "need_reorder" in rop_df.columns:
+        items_to_reorder = int(rop_df["need_reorder"].sum())
+
+    # Total SKUs in inventory
+    total_skus = 0
+    total_inventory_value = 0.0
+    if latest_inv is not None and not latest_inv.empty:
+        total_skus = len(latest_inv)
+        if "Quantity" in latest_inv.columns and "Rate" in latest_inv.columns:
+            latest_inv_calc = latest_inv.copy()
+            latest_inv_calc["Value"] = pd.to_numeric(latest_inv_calc.get("Quantity", 0), errors="coerce") * pd.to_numeric(latest_inv_calc.get("Rate", 0), errors="coerce")
+            total_inventory_value = float(latest_inv_calc["Value"].sum())
+
+    # Stock coverage (average days of stock)
+    stock_coverage_days = 0
+    if rop_df is not None and not rop_df.empty and "daily_demand_mean" in rop_df.columns:
+        valid_demand = rop_df[rop_df["daily_demand_mean"] > 0].copy()
+        if not valid_demand.empty and latest_inv is not None:
+            # Merge with inventory
+            coverage_df = valid_demand.merge(
+                latest_inv[["Particular", "Quantity"]],
+                on="Particular",
+                how="left"
+            )
+            coverage_df["days_coverage"] = pd.to_numeric(coverage_df["Quantity"], errors="coerce") / coverage_df["daily_demand_mean"]
+            stock_coverage_days = int(coverage_df["days_coverage"].mean())
+
+    # Render KPI cards
+    col1, col2, col3, col4 = st.columns(4)
+
+    with col1:
+        st.markdown(f"""
         <div class="metric-card">
             <div class="metric-label">💰 Total Revenue</div>
-            <div class="metric-value">₹{:,.0f}</div>
-            <div class="metric-change positive">+12.5% <span style="color: #64748b;">from last month</span></div>
+            <div class="metric-value">₹{total_rev:,.0f}</div>
+            <div class="metric-change neutral">{total_quantity:,} units sold</div>
         </div>
-        """.format(total_rev), unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
 
     with col2:
-        st.markdown("""
+        status_class = "negative" if items_to_reorder > 0 else "positive"
+        st.markdown(f"""
         <div class="metric-card">
-            <div class="metric-label">📋 Active Orders</div>
-            <div class="metric-value">{}</div>
-            <div class="metric-change positive">+8.2% <span style="color: #64748b;">processing</span></div>
+            <div class="metric-label">📋 Items to Reorder</div>
+            <div class="metric-value">{items_to_reorder}</div>
+            <div class="metric-change {status_class}">out of {total_skus} SKUs</div>
         </div>
-        """.format(active), unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
 
     with col3:
-        st.markdown("""
+        coverage_class = "negative" if stock_coverage_days < 14 else "positive" if stock_coverage_days > 30 else "neutral"
+        st.markdown(f"""
         <div class="metric-card">
-            <div class="metric-label">⚡ Efficiency Score</div>
-            <div class="metric-value">94%</div>
-            <div class="metric-change positive">+3.1% <span style="color: #64748b;">optimization rate</span></div>
+            <div class="metric-label">⏱️ Avg Stock Coverage</div>
+            <div class="metric-value">{stock_coverage_days} days</div>
+            <div class="metric-change {coverage_class}">current inventory</div>
         </div>
         """, unsafe_allow_html=True)
 
     with col4:
-        st.markdown("""
+        st.markdown(f"""
         <div class="metric-card">
-            <div class="metric-label">💡 Cost Savings</div>
-            <div class="metric-value">₹12,450</div>
-            <div class="metric-change positive">+15.8% <span style="color: #64748b;">this quarter</span></div>
+            <div class="metric-label">💼 Inventory Value</div>
+            <div class="metric-value">₹{total_inventory_value:,.0f}</div>
+            <div class="metric-change neutral">{total_skus} active SKUs</div>
         </div>
         """, unsafe_allow_html=True)
 
 
 def render_charts_section(sales_df, latest_inv, eoq_df, rop_df, mix_pct):
-    """Render charts and visualizations"""
+    """Render charts and visualizations with proper data validation"""
+
     # First row of charts
     col1, col2 = st.columns(2)
 
     with col1:
-        st.markdown('<div class="card"><h3 class="card-title">📈 Sales & Orders Trend</h3>', unsafe_allow_html=True)
+        st.markdown('<div class="card"><h3 class="card-title">📈 Sales Trend</h3>', unsafe_allow_html=True)
         if sales_df is not None and not sales_df.empty and {"Date", "Quantity"}.issubset(sales_df.columns):
             render_sales_trend_chart(sales_df)
         else:
-            st.info("📊 Sales data not available. Please upload sales data and rebuild.")
+            st.info("📊 Sales data not available. Please ensure sales data is loaded correctly.")
         st.markdown('</div>', unsafe_allow_html=True)
 
     with col2:
@@ -120,363 +185,423 @@ def render_charts_section(sales_df, latest_inv, eoq_df, rop_df, mix_pct):
             st.info("📈 Inventory data not available. Please rebuild to generate data.")
         st.markdown('</div>', unsafe_allow_html=True)
 
-    # Product Combination Recommendation
-    if rop_df is not None and not rop_df.empty and "need_reorder" in rop_df.columns:
-        render_product_recommendations(rop_df)
+    # Second row - Product mix and reorder analysis
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown('<div class="card"><h3 class="card-title">📊 Product Mix Analysis</h3>', unsafe_allow_html=True)
+        if mix_pct is not None and not mix_pct.empty:
+            render_product_mix_chart(mix_pct)
+        else:
+            st.info("📊 Product mix data not available.")
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    with col2:
+        st.markdown('<div class="card"><h3 class="card-title">⚠️ Reorder Status</h3>', unsafe_allow_html=True)
+        if rop_df is not None and not rop_df.empty:
+            render_reorder_status_chart(rop_df)
+        else:
+            st.info("📊 Reorder data not available.")
+        st.markdown('</div>', unsafe_allow_html=True)
 
 
 def render_sales_trend_chart(sales_df):
-    """Render sales trend chart"""
-    s = sales_df.copy()
-    s["Date"] = pd.to_datetime(s["Date"])
+    """Render sales trend chart with proper validation"""
+    try:
+        s = sales_df.copy()
+        s["Date"] = pd.to_datetime(s["Date"], errors="coerce")
+        s = s.dropna(subset=["Date"])
 
-    # Create monthly aggregation
-    monthly = s.groupby(s["Date"].dt.to_period("M")).agg(
-        Sales=("Value", "sum"),
-        Orders=("Quantity", "sum")
-    ).reset_index()
-    monthly["Date"] = monthly["Date"].dt.to_timestamp()
+        if s.empty:
+            st.warning("No valid date data available for trend analysis.")
+            return
 
-    # Create the chart
-    fig = go.Figure()
+        # Ensure we have Quantity
+        if "Quantity" not in s.columns:
+            st.warning("Sales data missing Quantity column.")
+            return
 
-    # Add area chart for sales
-    fig.add_scatter(
-        x=monthly["Date"],
-        y=monthly["Sales"],
-        mode='lines',
-        name='Sales',
-        fill='tonexty',
-        fillcolor='rgba(14, 165, 233, 0.1)',
-        line=dict(color='#0ea5e9', width=3)
-    )
+        s["Quantity"] = pd.to_numeric(s["Quantity"], errors="coerce").fillna(0)
 
-    # Add line for orders
-    fig.add_scatter(
-        x=monthly["Date"],
-        y=monthly["Orders"],
-        mode='lines+markers',
-        name='Orders',
-        line=dict(color='#06b6d4', width=2),
-        marker=dict(size=8, color='#06b6d4')
-    )
+        # Calculate Value if Rate exists, otherwise use Quantity
+        if "Rate" in s.columns:
+            s["Rate"] = pd.to_numeric(s["Rate"], errors="coerce").fillna(0)
+            s["Value"] = s["Quantity"] * s["Rate"]
+        else:
+            s["Value"] = s["Quantity"]
 
-    fig.update_layout(
-        height=300,
-        margin=dict(l=10, r=10, t=10, b=10),
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(color="#374151"),
-        showlegend=True,
-        legend=dict(
-            orientation="h",
-            yanchor="bottom",
-            y=1.02,
-            xanchor="right",
-            x=1
+        # Create monthly aggregation
+        monthly = s.groupby(s["Date"].dt.to_period("M")).agg({
+            "Value": "sum",
+            "Quantity": "sum"
+        }).reset_index()
+
+        if monthly.empty:
+            st.warning("Insufficient data for trend chart.")
+            return
+
+        monthly["Date"] = monthly["Date"].dt.to_timestamp()
+
+        # Create the chart
+        fig = go.Figure()
+
+        # Add area chart for sales value
+        fig.add_scatter(
+            x=monthly["Date"],
+            y=monthly["Value"],
+            mode='lines',
+            name='Sales Value',
+            fill='tozeroy',
+            fillcolor='rgba(14, 165, 233, 0.1)',
+            line=dict(color='#0ea5e9', width=3)
         )
-    )
 
-    fig.update_xaxes(showgrid=True, gridcolor='rgba(148, 163, 184, 0.1)')
-    fig.update_yaxes(showgrid=True, gridcolor='rgba(148, 163, 184, 0.1)')
+        # Add line for quantity
+        fig.add_scatter(
+            x=monthly["Date"],
+            y=monthly["Quantity"],
+            mode='lines+markers',
+            name='Quantity',
+            line=dict(color='#06b6d4', width=2),
+            marker=dict(size=6, color='#06b6d4'),
+            yaxis="y2"
+        )
 
-    st.plotly_chart(fig, use_container_width=True, theme=None)
+        fig.update_layout(
+            height=400,
+            margin=dict(l=10, r=10, t=30, b=10),
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            font=dict(color="#374151"),
+            showlegend=True,
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=1.02,
+                xanchor="right",
+                x=1
+            ),
+            yaxis=dict(title="Sales Value (₹)", side="left"),
+            yaxis2=dict(title="Quantity", side="right", overlaying="y")
+        )
+
+        fig.update_xaxes(showgrid=True, gridcolor='rgba(148, 163, 184, 0.1)')
+        fig.update_yaxes(showgrid=True, gridcolor='rgba(148, 163, 184, 0.1)')
+
+        st.plotly_chart(fig, use_container_width=True, theme=None)
+
+    except Exception as e:
+        logger.error(f"Error rendering sales trend chart: {str(e)}")
+        st.error(f"Unable to render sales trend: {str(e)}")
 
 
 def render_inventory_chart(latest_inv, eoq_df):
-    """Render inventory vs optimal levels chart"""
-    inv = latest_inv.copy()
-    inv["Quantity"] = pd.to_numeric(inv["Quantity"], errors="coerce").fillna(0)
-    inv = inv.sort_values("Particular").head(10)  # Top 10 items
-
-    # Map EOQ values
-    eoq_map = dict(
-        zip(eoq_df.get("Particular", []), eoq_df.get("EOQ", []))) if eoq_df is not None and not eoq_df.empty else {}
-    inv["Optimal"] = inv["Particular"].map(eoq_map).fillna(inv["Quantity"].median() if len(inv) else 0)
-
-    fig = go.Figure()
-
-    # Add current inventory bars
-    fig.add_bar(
-        x=inv["Particular"],
-        y=inv["Quantity"],
-        name='Current Stock',
-        marker_color='#0ea5e9',
-        opacity=0.8
-    )
-
-    # Add optimal level bars
-    fig.add_bar(
-        x=inv["Particular"],
-        y=inv["Optimal"],
-        name='Optimal Level',
-        marker_color='#22c55e',
-        opacity=0.8
-    )
-
-    fig.update_layout(
-        height=300,
-        margin=dict(l=10, r=10, t=10, b=10),
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(color="#374151"),
-        barmode='group',
-        showlegend=True,
-        legend=dict(
-            orientation="h",
-            yanchor="bottom",
-            y=1.02,
-            xanchor="right",
-            x=1
-        )
-    )
-
-    fig.update_xaxes(showgrid=False, tickangle=45)
-    fig.update_yaxes(showgrid=True, gridcolor='rgba(148, 163, 184, 0.1)')
-
-    st.plotly_chart(fig, use_container_width=True, theme=None)
-
-
-def render_product_recommendations(rop_df):
-    """Render product combination recommendations"""
-    st.markdown("""
-    <div class="card" style="background: linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%); color: white; margin: 2rem 0;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-            <div>
-                <h3 style="color: white; margin: 0;">Total Order Cost</h3>
-                <div style="font-size: 2rem; font-weight: 700;">$8,450</div>
-            </div>
-            <div>
-                <h3 style="color: white; margin: 0;">Estimated Savings</h3>
-                <div style="font-size: 2rem; font-weight: 700; color: #22c55e;">$1,520</div>
-            </div>
-            <div>
-                <h3 style="color: white; margin: 0;">Delivery Timeline</h3>
-                <div style="font-size: 2rem; font-weight: 700;">3-5 business days</div>
-            </div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # Recommended products
-    st.markdown("""
-    <div class="card">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-            <h3 class="card-title">🎯 Recommended Product Combination</h3>
-        </div>
-    """, unsafe_allow_html=True)
-
-    # Get reorder suggestions
-    suggest = rop_df[rop_df["need_reorder"] == True].head(5) if "need_reorder" in rop_df.columns else pd.DataFrame()
-
-    if not suggest.empty:
-        for _, row in suggest.iterrows():
-            qty = int(row.get("suggested_order_qty", 0))
-            particular = row.get("Particular", "Unknown")
-            rate = row.get("Rate", 0)
-            total = qty * rate if rate else 0
-
-            st.markdown(f"""
-            <div style="display: flex; justify-content: space-between; align-items: center; 
-                        padding: 1rem; background: #f8fafc; border-radius: 0.5rem; margin-bottom: 0.5rem;">
-                <div>
-                    <div style="font-weight: 600; color: #374151;">{particular}</div>
-                    <div style="color: #64748b; font-size: 0.875rem;">Qty: {qty}</div>
-                </div>
-                <div style="text-align: right;">
-                    <div style="color: #64748b; font-size: 0.875rem;">₹{rate:.0f}/unit</div>
-                    <div style="font-weight: 600; color: #0ea5e9;">₹{total:,.0f}</div>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    # Ready to optimize section
-    st.markdown("""
-    <div style="background: #f0fdf4; border: 1px solid #22c55e; border-radius: 0.75rem; 
-                padding: 1rem; margin: 1rem 0; display: flex; justify-content: space-between; align-items: center;">
-        <div>
-            <div style="color: #16a34a; font-weight: 600; margin-bottom: 0.25rem;">✅ Ready to optimize your inventory?</div>
-            <div style="color: #15803d; font-size: 0.875rem;">This combination maximizes efficiency and minimizes costs</div>
-        </div>
-        <button style="background: #0ea5e9; color: white; border: none; padding: 0.75rem 1.5rem; 
-                       border-radius: 0.5rem; font-weight: 600; cursor: pointer;">
-            Approve Order
-        </button>
-    </div>
-    """, unsafe_allow_html=True)
-
-
-def render_ai_recommendations(rop_df):
-    """Render AI recommendations section"""
-    col1, col2, col3 = st.columns(3)
-
-    with col1:
-        st.markdown("""
-        <div class="card">
-            <h3 class="card-title">📊 Inventory by Category</h3>
-            <div style="margin: 1rem 0;">
-                <div style="margin-bottom: 0.5rem;">
-                    <div style="display: flex; justify-content: space-between;">
-                        <span>Plywood</span><span style="font-weight: 600;">45%</span>
-                    </div>
-                    <div style="background: #e5e7eb; height: 8px; border-radius: 4px; margin-top: 0.25rem;">
-                        <div style="background: #0ea5e9; height: 100%; width: 45%; border-radius: 4px;"></div>
-                    </div>
-                </div>
-                <div style="margin-bottom: 0.5rem;">
-                    <div style="display: flex; justify-content: space-between;">
-                        <span>Adhesives</span><span style="font-weight: 600;">25%</span>
-                    </div>
-                    <div style="background: #e5e7eb; height: 8px; border-radius: 4px; margin-top: 0.25rem;">
-                        <div style="background: #06b6d4; height: 100%; width: 25%; border-radius: 4px;"></div>
-                    </div>
-                </div>
-                <div style="margin-bottom: 0.5rem;">
-                    <div style="display: flex; justify-content: space-between;">
-                        <span>Hardware</span><span style="font-weight: 600;">20%</span>
-                    </div>
-                    <div style="background: #e5e7eb; height: 8px; border-radius: 4px; margin-top: 0.25rem;">
-                        <div style="background: #22c55e; height: 100%; width: 20%; border-radius: 4px;"></div>
-                    </div>
-                </div>
-                <div>
-                    <div style="display: flex; justify-content: space-between;">
-                        <span>Tools</span><span style="font-weight: 600;">10%</span>
-                    </div>
-                    <div style="background: #e5e7eb; height: 8px; border-radius: 4px; margin-top: 0.25rem;">
-                        <div style="background: #f59e0b; height: 100%; width: 10%; border-radius: 4px;"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with col2:
-        st.markdown("""
-        <div class="card">
-            <h3 class="card-title">📈 Inventory Status</h3>
-            <div style="margin: 1rem 0;">
-                <div style="margin-bottom: 1rem;">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span>Plywood 18mm</span>
-                        <span style="background: #fef2f2; color: #dc2626; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem;">low</span>
-                    </div>
-                    <div style="color: #64748b; font-size: 0.875rem; margin: 0.25rem 0;">Current: 45 | Optimal: 80</div>
-                    <div style="background: #e5e7eb; height: 8px; border-radius: 4px;">
-                        <div style="background: #dc2626; height: 100%; width: 15%; border-radius: 4px;"></div>
-                    </div>
-                </div>
-
-                <div style="margin-bottom: 1rem;">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span>Plywood 12mm</span>
-                        <span style="background: #dbeafe; color: #2563eb; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem;">optimal</span>
-                    </div>
-                    <div style="color: #64748b; font-size: 0.875rem; margin: 0.25rem 0;">Current: 100 | Optimal: 100</div>
-                    <div style="background: #e5e7eb; height: 8px; border-radius: 4px;">
-                        <div style="background: #2563eb; height: 100%; width: 85%; border-radius: 4px;"></div>
-                    </div>
-                </div>
-
-                <div>
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span>Plywood 6mm</span>
-                        <span style="background: #fef9c3; color: #d97706; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem;">high</span>
-                    </div>
-                    <div style="color: #64748b; font-size: 0.875rem; margin: 0.25rem 0;">Current: 95 | Optimal: 80</div>
-                    <div style="background: #e5e7eb; height: 8px; border-radius: 4px;">
-                        <div style="background: #d97706; height: 100%; width: 92%; border-radius: 4px;"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with col3:
-        st.markdown("""
-        <div class="card">
-            <h3 class="card-title">🤖 AI Recommendations</h3>
-            <div style="margin: 1rem 0;">
-                <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 0.5rem; padding: 1rem; margin-bottom: 1rem;">
-                    <div style="display: flex; align-items: center; margin-bottom: 0.5rem;">
-                        <span style="color: #dc2626; margin-right: 0.5rem;">⚠️</span>
-                        <span style="font-weight: 600; color: #dc2626;">Plywood 18mm</span>
-                        <span style="background: #dc2626; color: white; padding: 0.125rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem; margin-left: 0.5rem;">high</span>
-                    </div>
-                    <div style="color: #7f1d1d; font-size: 0.875rem;">Demand spike predicted</div>
-                    <div style="font-weight: 600; color: #0ea5e9; margin-top: 0.5rem;">Order 30 units</div>
-                    <div style="color: #64748b; font-size: 0.75rem;">in 2 days</div>
-                </div>
-
-                <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 0.5rem; padding: 1rem; margin-bottom: 1rem;">
-                    <div style="display: flex; align-items: center; margin-bottom: 0.5rem;">
-                        <span style="color: #16a34a; margin-right: 0.5rem;">⭕</span>
-                        <span style="font-weight: 600; color: #15803d;">Adhesive A1</span>
-                        <span style="background: #16a34a; color: white; padding: 0.125rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem; margin-left: 0.5rem;">medium</span>
-                    </div>
-                    <div style="color: #14532d; font-size: 0.875rem;">Regular restocking</div>
-                    <div style="font-weight: 600; color: #0ea5e9; margin-top: 0.5rem;">Order 15 units</div>
-                    <div style="color: #64748b; font-size: 0.75rem;">in 1 week</div>
-                </div>
-
-                <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 0.5rem; padding: 1rem;">
-                    <div style="display: flex; align-items: center; margin-bottom: 0.5rem;">
-                        <span style="color: #16a34a; margin-right: 0.5rem;">✅</span>
-                        <span style="font-weight: 600; color: #15803d;">Optimization Impact</span>
-                    </div>
-                    <div style="color: #14532d; font-size: 0.875rem; margin-bottom: 0.5rem;">Following these recommendations will reduce stockouts by 35% and decrease carrying costs by $2,400/month.</div>
-                </div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-
-def run_simulation():
-    """Handle simulation execution"""
+    """Render inventory vs optimal levels chart with pagination"""
     try:
-        # Try to import simulation module
-        def _load_simulation_module():
-            try:
-                from Modules import simulation
-                return simulation
-            except Exception:
-                try:
-                    import simulation
-                    return simulation
-                except Exception:
-                    pass
+        inv = latest_inv.copy()
+        inv["Quantity"] = pd.to_numeric(inv["Quantity"], errors="coerce").fillna(0)
+        inv = inv.sort_values("Quantity", ascending=False)
 
-            sim_path = os.path.join("Modules", "simulation.py")
-            if os.path.exists(sim_path):
-                spec = importlib.util.spec_from_file_location("simulation", sim_path)
-                mod = importlib.util.module_from_spec(spec)
-                assert spec and spec.loader
-                spec.loader.exec_module(mod)
-                return mod
-            raise ImportError("simulation.py not found")
+        # Pagination controls
+        items_per_page = 10
+        total_items = len(inv)
+        total_pages = max(1, (total_items + items_per_page - 1) // items_per_page)
 
-        log_buf = StringIO()
-        with st.spinner("🤖 Running AI simulation..."):
-            sim = _load_simulation_module()
-            with redirect_stdout(log_buf):
-                if hasattr(sim, "simulate"):
-                    sim.simulate(interactive=False)
-                else:
-                    print("ERROR: simulate() not found")
+        page = st.selectbox("Select page", range(1, total_pages + 1), key="inv_chart_page")
+        start_idx = (page - 1) * items_per_page
+        end_idx = min(start_idx + items_per_page, total_items)
 
-        st.success("✅ Simulation complete!")
+        inv_page = inv.iloc[start_idx:end_idx]
 
-        # Show results in tabs
-        render_simulation_results(log_buf.getvalue())
+        # Map EOQ values
+        eoq_map = {}
+        if eoq_df is not None and not eoq_df.empty and "Particular" in eoq_df.columns and "EOQ" in eoq_df.columns:
+            eoq_map = dict(zip(eoq_df["Particular"], eoq_df["EOQ"]))
+
+        inv_page["Optimal"] = inv_page["Particular"].map(eoq_map)
+
+        # Fill missing optimal values with median of available EOQs or current quantity
+        if inv_page["Optimal"].isna().any():
+            fill_value = eoq_df["EOQ"].median() if eoq_df is not None and not eoq_df.empty else inv_page["Quantity"].median()
+            inv_page["Optimal"] = inv_page["Optimal"].fillna(fill_value)
+
+        fig = go.Figure()
+
+        # Add current inventory bars
+        fig.add_bar(
+            x=inv_page["Particular"],
+            y=inv_page["Quantity"],
+            name='Current Stock',
+            marker_color='#0ea5e9',
+            opacity=0.8,
+            text=inv_page["Quantity"].round(0),
+            textposition='outside'
+        )
+
+        # Add optimal level bars
+        fig.add_bar(
+            x=inv_page["Particular"],
+            y=inv_page["Optimal"],
+            name='Optimal EOQ',
+            marker_color='#22c55e',
+            opacity=0.6,
+            text=inv_page["Optimal"].round(0),
+            textposition='outside'
+        )
+
+        fig.update_layout(
+            height=400,
+            margin=dict(l=10, r=10, t=30, b=60),
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            font=dict(color="#374151"),
+            barmode='group',
+            showlegend=True,
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=1.02,
+                xanchor="right",
+                x=1
+            )
+        )
+
+        fig.update_xaxes(
+            showgrid=False,
+            tickangle=45,
+            tickmode='linear'
+        )
+        fig.update_yaxes(showgrid=True, gridcolor='rgba(148, 163, 184, 0.1)')
+
+        st.plotly_chart(fig, use_container_width=True, theme=None)
+
+        st.caption(f"Showing items {start_idx + 1}-{end_idx} of {total_items}")
 
     except Exception as e:
+        logger.error(f"Error rendering inventory chart: {str(e)}")
+        st.error(f"Unable to render inventory chart: {str(e)}")
+
+
+def render_product_mix_chart(mix_pct):
+    """Render actual product mix from data"""
+    try:
+        if mix_pct is None or mix_pct.empty:
+            st.info("No product mix data available")
+            return
+
+        # Take top 10 products by percentage
+        top_products = mix_pct.head(10)
+
+        fig = px.pie(
+            top_products,
+            names=top_products.index,
+            values='pct',
+            title='',
+            color_discrete_sequence=px.colors.qualitative.Set3
+        )
+
+        fig.update_traces(
+            textposition='inside',
+            textinfo='percent+label',
+            hovertemplate='%{label}<br>%{percent}<extra></extra>'
+        )
+
+        fig.update_layout(
+            height=400,
+            margin=dict(l=10, r=10, t=10, b=10),
+            paper_bgcolor="rgba(0,0,0,0)",
+            font=dict(color="#374151"),
+            showlegend=True,
+            legend=dict(
+                orientation="v",
+                yanchor="middle",
+                y=0.5,
+                xanchor="left",
+                x=1.05
+            )
+        )
+
+        st.plotly_chart(fig, use_container_width=True, theme=None)
+
+    except Exception as e:
+        logger.error(f"Error rendering product mix: {str(e)}")
+        st.error(f"Unable to render product mix: {str(e)}")
+
+
+def render_reorder_status_chart(rop_df):
+    """Render reorder status visualization"""
+    try:
+        if "need_reorder" not in rop_df.columns:
+            st.warning("Reorder status not available in data")
+            return
+
+        # Count items by reorder status
+        reorder_counts = rop_df["need_reorder"].value_counts()
+
+        labels = ["Needs Reorder" if idx else "Stock OK" for idx in reorder_counts.index]
+        values = reorder_counts.values
+        colors = ['#ef4444' if "Needs" in label else '#22c55e' for label in labels]
+
+        fig = go.Figure(data=[go.Pie(
+            labels=labels,
+            values=values,
+            marker=dict(colors=colors),
+            hole=0.4,
+            textinfo='value+percent',
+            hovertemplate='%{label}<br>%{value} items<br>%{percent}<extra></extra>'
+        )])
+
+        fig.update_layout(
+            height=400,
+            margin=dict(l=10, r=10, t=10, b=10),
+            paper_bgcolor="rgba(0,0,0,0)",
+            font=dict(color="#374151"),
+            showlegend=True,
+            annotations=[dict(
+                text=f'{reorder_counts.sum()}<br>Total SKUs',
+                x=0.5, y=0.5,
+                font_size=16,
+                showarrow=False
+            )]
+        )
+
+        st.plotly_chart(fig, use_container_width=True, theme=None)
+
+        # Show items needing reorder
+        items_to_reorder = rop_df[rop_df["need_reorder"] == True]
+        if not items_to_reorder.empty:
+            with st.expander(f"📋 View {len(items_to_reorder)} items needing reorder"):
+                display_cols = ["Particular", "current_inventory", "reorder_point", "suggested_order_qty"]
+                available_cols = [col for col in display_cols if col in items_to_reorder.columns]
+                st.dataframe(
+                    items_to_reorder[available_cols].sort_values("reorder_point", ascending=False),
+                    use_container_width=True,
+                    hide_index=True
+                )
+
+    except Exception as e:
+        logger.error(f"Error rendering reorder status: {str(e)}")
+        st.error(f"Unable to render reorder status: {str(e)}")
+
+
+def render_real_recommendations(rop_df, latest_inv, eoq_df):
+    """Render recommendations based on actual data analysis"""
+
+    st.markdown("""
+    <div class="card">
+        <h3 class="card-title">💡 Intelligent Recommendations</h3>
+        <p class="card-subtitle">Based on your current inventory and demand patterns</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        # Items urgently needing reorder
+        if "need_reorder" in rop_df.columns:
+            urgent_items = rop_df[rop_df["need_reorder"] == True].copy()
+
+            if not urgent_items.empty:
+                # Calculate urgency score
+                if "current_inventory" in urgent_items.columns and "daily_demand_mean" in urgent_items.columns:
+                    urgent_items["days_left"] = (
+                        pd.to_numeric(urgent_items["current_inventory"], errors="coerce") /
+                        pd.to_numeric(urgent_items["daily_demand_mean"], errors="coerce").replace(0, 1)
+                    ).fillna(999)
+                    urgent_items = urgent_items.sort_values("days_left")
+
+                st.markdown("#### ⚠️ Priority Reorders")
+                top_urgent = urgent_items.head(5)
+
+                for _, row in top_urgent.iterrows():
+                    days_left = row.get("days_left", "N/A")
+                    days_text = f"{days_left:.0f} days" if isinstance(days_left, (int, float)) and days_left < 999 else "Low stock"
+                    order_qty = row.get("suggested_order_qty", row.get("EOQ", "N/A"))
+
+                    st.markdown(f"""
+                    <div style="padding: 0.75rem; background: #fef2f2; border-left: 3px solid #ef4444; margin-bottom: 0.5rem; border-radius: 0.5rem;">
+                        <div style="font-weight: 600; color: #1f2937;">{row.get('Particular', 'Unknown')}</div>
+                        <div style="font-size: 0.875rem; color: #64748b; margin-top: 0.25rem;">
+                            Stock: {row.get('current_inventory', 0):.0f} | Order: {order_qty:.0f} units | {days_text}
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+            else:
+                st.success("✅ All items are adequately stocked!")
+
+    with col2:
+        # Overstocked items
+        if latest_inv is not None and eoq_df is not None:
+            st.markdown("#### 📦 Overstocked Items")
+
+            merged = latest_inv.merge(eoq_df[["Particular", "EOQ"]], on="Particular", how="left")
+            merged["Quantity"] = pd.to_numeric(merged["Quantity"], errors="coerce").fillna(0)
+            merged["EOQ"] = pd.to_numeric(merged["EOQ"], errors="coerce")
+            merged["excess_pct"] = ((merged["Quantity"] - merged["EOQ"]) / merged["EOQ"]) * 100
+
+            overstocked = merged[merged["excess_pct"] > 50].sort_values("excess_pct", ascending=False).head(5)
+
+            if not overstocked.empty:
+                for _, row in overstocked.iterrows():
+                    st.markdown(f"""
+                    <div style="padding: 0.75rem; background: #fef9c3; border-left: 3px solid #f59e0b; margin-bottom: 0.5rem; border-radius: 0.5rem;">
+                        <div style="font-weight: 600; color: #1f2937;">{row.get('Particular', 'Unknown')}</div>
+                        <div style="font-size: 0.875rem; color: #64748b; margin-top: 0.25rem;">
+                            Current: {row['Quantity']:.0f} | Optimal: {row['EOQ']:.0f} | {row['excess_pct']:.0f}% excess
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+            else:
+                st.success("✅ No significantly overstocked items!")
+
+
+def run_simulation(days=90, lead_time=7, service_level=0.95):
+    """Run inventory simulation with progress tracking"""
+    try:
+        with st.spinner(f"Running {days}-day simulation..."):
+            # Check if simulation.py exists
+            sim_file = "Modules/simulation.py"
+            if not os.path.exists(sim_file):
+                st.error(f"❌ Simulation module not found: {sim_file}")
+                return
+
+            # Load simulation module
+            spec = importlib.util.spec_from_file_location("simulation", sim_file)
+            if spec is None or spec.loader is None:
+                st.error("❌ Failed to load simulation module")
+                return
+
+            sim_module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(sim_module)
+
+            # Run simulation
+            logger.info(f"Starting simulation: {days} days, lead_time={lead_time}, service_level={service_level}")
+
+            # Capture output
+            log_buf = StringIO()
+            with redirect_stdout(log_buf):
+                if hasattr(sim_module, 'main'):
+                    sim_module.main()
+                else:
+                    st.error("❌ Simulation module missing 'main' function")
+                    return
+
+            st.success(f"✅ Simulation completed successfully!")
+            logger.info("Simulation completed")
+
+            # Show results
+            render_simulation_results(log_buf.getvalue())
+
+    except Exception as e:
+        logger.error(f"Simulation failed: {str(e)}")
         st.error(f"❌ Simulation failed: {str(e)}")
+        st.info("Please check the simulation module and data files.")
 
 
 def render_simulation_results(log_text):
     """Render simulation results in tabs"""
+    st.markdown("### 📊 Simulation Results")
+
     tab1, tab2, tab3, tab4 = st.tabs(["📈 Daily Summary", "📋 Orders", "⚠️ Backorders", "📊 Final Inventory"])
 
     with tab1:
@@ -493,58 +618,66 @@ def render_simulation_results(log_text):
 
 
 def render_simulation_table(file_path, title, show_download=False):
-    """Render simulation data table with day filter"""
-    if os.path.exists(file_path):
+    """Render simulation data table with improved day filtering"""
+    if not os.path.exists(file_path):
+        st.info(f"📄 No {title.lower()} data available yet. Run simulation to generate results.")
+        return
+
+    try:
         df = pd.read_csv(file_path)
+
+        if df.empty:
+            st.info(f"📄 No data in {title.lower()} file.")
+            return
 
         # Add day filter if day column exists
         day_col = None
-        for col in ["day", "Day", "DAY", "date", "Date"]:
+        for col in ["day", "Day", "DAY"]:
             if col in df.columns:
                 day_col = col
                 break
 
         if day_col:
-            if "date" in day_col.lower():
-                try:
-                    dates = pd.to_datetime(df[day_col])
-                    unique_dates = sorted(dates.dropna().unique())
+            days = pd.to_numeric(df[day_col], errors="coerce").dropna()
+            if not days.empty:
+                min_day, max_day = int(days.min()), int(days.max())
+
+                col1, col2 = st.columns([3, 1])
+                with col1:
                     day_range = st.slider(
-                        f"{title} - Select date range",
-                        min_value=0,
-                        max_value=len(unique_dates) - 1,
-                        value=(0, min(29, len(unique_dates) - 1)),
-                        format="Day %d"
-                    )
-                    selected_dates = unique_dates[day_range[0]:day_range[1] + 1]
-                    filtered_df = df[dates.isin(selected_dates)]
-                except Exception:
-                    filtered_df = df
-            else:
-                days = pd.to_numeric(df[day_col], errors="coerce").dropna()
-                if not days.empty:
-                    min_day, max_day = int(days.min()), int(days.max())
-                    day_range = st.slider(
-                        f"{title} - Day range",
+                        f"Filter by day",
                         min_value=min_day,
                         max_value=max_day,
-                        value=(min_day, min(min_day + 29, max_day))
+                        value=(min_day, min(min_day + 29, max_day)),
+                        key=f"slider_{title}"
                     )
-                    filtered_df = df[(pd.to_numeric(df[day_col], errors="coerce") >= day_range[0]) &
-                                     (pd.to_numeric(df[day_col], errors="coerce") <= day_range[1])]
-                else:
-                    filtered_df = df
+
+                with col2:
+                    st.metric("Days Selected", day_range[1] - day_range[0] + 1)
+
+                filtered_df = df[
+                    (pd.to_numeric(df[day_col], errors="coerce") >= day_range[0]) &
+                    (pd.to_numeric(df[day_col], errors="coerce") <= day_range[1])
+                ]
+            else:
+                filtered_df = df
         else:
             filtered_df = df
 
-        st.dataframe(filtered_df, use_container_width=True)
+        # Display dataframe
+        st.dataframe(filtered_df, use_container_width=True, hide_index=True)
 
+        # Download button
         if show_download:
+            csv_data = filtered_df.to_csv(index=False)
             st.download_button(
                 f"📥 Download {title}",
-                data=open(file_path, "rb").read(),
-                file_name=os.path.basename(file_path),
-                mime="text/csv"
+                data=csv_data,
+                file_name=f"filtered_{os.path.basename(file_path)}",
+                mime="text/csv",
+                key=f"download_{title}"
             )
-    else:
-        st.info(f"📄 No {title.lower()} data available yet.")
+
+    except Exception as e:
+        logger.error(f"Error rendering simulation table {file_path}: {str(e)}")
+        st.error(f"Error loading {title}: {str(e)}")
