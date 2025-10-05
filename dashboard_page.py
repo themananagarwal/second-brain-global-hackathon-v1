@@ -1,4 +1,4 @@
-# dashboard_page.py - FIXED WORKING VERSION
+
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -564,9 +564,6 @@ def render_dashboard_page(sales_df, latest_inv, eoq_df, rop_df, mix_pct):
 
     st.markdown("</div>", unsafe_allow_html=True)
 
-    # Replace the simulation section in dashboard_page.py with this improved version
-
-    # Enhanced Simulation Section
     # Enhanced Simulation Section
     st.markdown("<div style='margin: 48px 0 24px 0;'>", unsafe_allow_html=True)
     st.markdown("""
@@ -893,6 +890,9 @@ def render_dashboard_page(sales_df, latest_inv, eoq_df, rop_df, mix_pct):
 
                         output = output_buffer.getvalue()
 
+                        # Store console output in session state
+                        st.session_state['sim_console_output'] = output
+
                         if output:
                             st.success("✅ **Simulation completed successfully!**")
 
@@ -968,32 +968,33 @@ def render_dashboard_page(sales_df, latest_inv, eoq_df, rop_df, mix_pct):
                                                                 config={'displayModeBar': False})
 
                                         # Backorder Chart
-                                        # Daily Backorders Chart (daily values)
-                                        fig_daily = go.Figure()
-                                        fig_daily.add_trace(go.Bar(
-                                            x=daily_summary[
-                                                'Date'] if 'Date' in daily_summary.columns else daily_summary.index,
-                                            y=daily_summary['open_backorders_units'],
-                                            name='Daily Backorders',
-                                            marker_color='#DC3545',
-                                            text=daily_summary['open_backorders_units'],
-                                            textposition='outside',
-                                            hovertemplate='<b>%{x}</b><br>Daily Backorders: %{y}<extra></extra>'
-                                        ))
+                                        with chart_col2:
+                                            if 'open_backorders_units' in daily_summary.columns:
+                                                st.markdown("#### 📉 Daily Backorders")
+                                                fig2 = go.Figure()
+                                                fig2.add_trace(go.Bar(
+                                                    x=daily_summary.index,
+                                                    y=daily_summary['open_backorders_units'],
+                                                    name='Open Backorders',
+                                                    marker_color='#DC3545'
+                                                ))
 
-                                        fig_daily.update_layout(
-                                            title="Daily Backorders Over Time",
-                                            height=300,
-                                            margin=dict(l=20, r=20, t=40, b=20),
-                                            paper_bgcolor='rgba(0,0,0,0)',
-                                            plot_bgcolor='rgba(0,0,0,0)',
-                                            font=dict(color='#374151', size=11)
-                                        )
-                                        fig_daily.update_xaxes(showgrid=False)
-                                        fig_daily.update_yaxes(showgrid=True, gridcolor='rgba(148, 163, 184, 0.15)',
-                                                               title='Units')
+                                                fig2.update_layout(
+                                                    height=350,
+                                                    margin=dict(l=20, r=20, t=20, b=20),
+                                                    paper_bgcolor='rgba(0,0,0,0)',
+                                                    plot_bgcolor='rgba(0,0,0,0)',
+                                                    font=dict(color='#374151', size=11)
+                                                )
 
-                                        st.plotly_chart(fig_daily, use_container_width=True)
+                                                fig2.update_xaxes(showgrid=False)
+                                                fig2.update_yaxes(showgrid=True, gridcolor='rgba(148, 163, 184, 0.15)',
+                                                                  title='Units')
+
+                                                st.plotly_chart(fig2, use_container_width=True,
+                                                                config={'displayModeBar': False})
+
+                                    tab_index += 1
 
                                 # Daily Summary Tab
                                 if has_daily_summary:
@@ -1041,24 +1042,32 @@ def render_dashboard_page(sales_df, latest_inv, eoq_df, rop_df, mix_pct):
 
                                     tab_index += 1
 
-                                # Console Logs Tab
+                                # Console Logs Tab - GET FROM SESSION STATE
                                 with tabs[tab_index]:
                                     st.markdown("#### 🖥️ Simulation Console Output")
 
-                                    st.code(output, language="text", line_numbers=True)
+                                    console_output = st.session_state.get('sim_console_output', '')
+                                    if console_output:
+                                        st.code(console_output, language="text", line_numbers=True)
 
-                                    # Download console output
-                                    st.download_button(
-                                        label="📥 Download Console Logs",
-                                        data=output.encode('utf-8'),
-                                        file_name=f"sim_console_output_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
-                                        mime="text/plain",
-                                        type="secondary"
-                                    )
+                                        # Download console output
+                                        st.download_button(
+                                            label="📥 Download Console Logs",
+                                            data=console_output.encode('utf-8'),
+                                            file_name=f"sim_console_output_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
+                                            mime="text/plain",
+                                            type="secondary"
+                                        )
+                                    else:
+                                        st.info("No console output available")
                             else:
                                 # If only console logs, show them directly
                                 st.markdown("#### 🖥️ Simulation Console Output")
-                                st.code(output, language="text", line_numbers=True)
+                                console_output = st.session_state.get('sim_console_output', '')
+                                if console_output:
+                                    st.code(console_output, language="text", line_numbers=True)
+                                else:
+                                    st.info("No console output available")
 
                             # Summary metrics if available - FULL WIDTH
                             if has_daily_summary:
