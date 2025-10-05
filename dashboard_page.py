@@ -122,7 +122,7 @@ def render_dashboard_page(sales_df, latest_inv, eoq_df, rop_df, mix_pct):
     with col1:
         st.markdown("""
         <div class="chart-container">
-            <h3  style="color: #000000;">📈 Daily Sales Trend</h3>
+            <h3 class="chart-title" style="color: #000000;">📈 Daily Sales Trend</h3>
         """, unsafe_allow_html=True)
 
         try:
@@ -151,8 +151,8 @@ def render_dashboard_page(sales_df, latest_inv, eoq_df, rop_df, mix_pct):
                     fig.update_layout(
                         height=350,
                         margin=dict(l=20, r=20, t=10, b=20),
-                        paper_bgcolor='rgba(0,0,0,0)',
-                        plot_bgcolor='rgba(0,0,0,0)',
+                        paper_bgcolor='rgba(255,255,255,0.6)',
+                        plot_bgcolor='rgba(255,255,255,0.6)',
                         font=dict(color='#374151', size=11, family='Arial'),
                         showlegend=False,
                         hovermode='x unified'
