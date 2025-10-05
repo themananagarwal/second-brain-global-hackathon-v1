@@ -17,6 +17,7 @@ from Modules.inventory_tracker import build_inventory_timeline
 from Modules.rolling_eoq import calculate_rolling_eoq
 from Modules.reorder_evaluator import evaluate_reorder_points
 from Modules.trends_analysis import calculate_monthly_mix
+
 from template import inject_global_css
 from home_page import render_home_page
 from dashboard_page import render_dashboard_page
@@ -41,7 +42,7 @@ st.set_page_config(
     page_title="SecondBrain - Inventory Intelligence",
     page_icon="🧠",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
 # =========================
@@ -60,7 +61,6 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 SALES_XLSX = os.path.join(DATA_DIR, "MDF Sales data.xlsx")
 PURCHASE_XLSX = os.path.join(DATA_DIR, "MDF purchase data.xlsx")
 BASE_INV_XLSX = os.path.join(DATA_DIR, "Inventory Base Data.xlsx")
-
 LATEST_INV_CSV = os.path.join(DATA_DIR, "latest_inventory.csv")
 EOQ_OUT_CSV = os.path.join(OUTPUT_DIR, "eoq_results.csv")
 REORDER_EVAL_CSV = os.path.join(DATA_DIR, "reorder_evaluation.csv")
@@ -253,6 +253,7 @@ def compute_pipeline():
         # Step 4: Calculate monthly mix
         try:
             logger.info("Calculating monthly product mix...")
+            sales_df = load_sales()
             if sales_df is not None:
                 results["mix_pct"] = calculate_monthly_mix(sales_df)
                 logger.info("Monthly mix calculation complete")
@@ -274,11 +275,14 @@ def compute_pipeline():
 # Navigation
 # =========================
 def render_navigation():
-    """Render navigation buttons"""
+    """Render navigation with active state styling"""
     st.markdown("""
     <div class="nav-container">
-        <div class="logo">
-            <span style="font-size: 1.5rem; font-weight: 800; color: #0ea5e9;">🧠 SecondBrain</span>
+        <div style="max-width: 1400px; margin: 0 auto; padding: 0 24px;">
+            <div class="nav-brand">
+                <span class="nav-brand-icon">🧠</span>
+                <span>SecondBrain</span>
+            </div>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -286,20 +290,29 @@ def render_navigation():
     col1, col2, col3, col4, col5 = st.columns([1, 1, 1, 1, 2])
 
     with col1:
-        if st.button("🏠 Home", use_container_width=True,
-                     type="primary" if st.session_state["current_page"] == "Home" else "secondary"):
+        if st.button(
+                "🏠 Home",
+                use_container_width=True,
+                type="primary" if st.session_state["current_page"] == "Home" else "secondary"
+        ):
             st.session_state["current_page"] = "Home"
             st.rerun()
 
     with col2:
-        if st.button("📊 Dashboard", use_container_width=True,
-                     type="primary" if st.session_state["current_page"] == "Dashboard" else "secondary"):
+        if st.button(
+                "📊 Dashboard",
+                use_container_width=True,
+                type="primary" if st.session_state["current_page"] == "Dashboard" else "secondary"
+        ):
             st.session_state["current_page"] = "Dashboard"
             st.rerun()
 
     with col3:
-        if st.button("📦 Inventory", use_container_width=True,
-                     type="primary" if st.session_state["current_page"] == "Inventory" else "secondary"):
+        if st.button(
+                "📦 Inventory",
+                use_container_width=True,
+                type="primary" if st.session_state["current_page"] == "Inventory" else "secondary"
+        ):
             st.session_state["current_page"] = "Inventory"
             st.rerun()
 
@@ -309,6 +322,7 @@ def render_navigation():
 # =========================
 def main():
     """Main application logic"""
+
     render_navigation()
 
     # Check for missing files
@@ -356,14 +370,37 @@ def main():
 
     elif st.session_state["current_page"] == "Inventory":
         st.markdown("""
-        <div class="page-header" style="background: linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%); 
-                                       padding: 2rem; border-radius: 1rem; margin: 2rem;">
-            <h1 class="page-title">📦 Inventory Management</h1>
-            <p class="page-subtitle">Real-time inventory tracking and optimization</p>
+        <div style='margin-bottom: 32px;'>
+            <h1 style='font-size: 2.5rem; font-weight: 700; color: #2C3E50; margin-bottom: 8px;'>
+                Inventory Management
+            </h1>
+            <p style='font-size: 1.125rem; color: #6C757D;'>
+                Real-time inventory tracking and optimization
+            </p>
         </div>
         """, unsafe_allow_html=True)
 
-        st.info("🚧 **Under Development** - Advanced inventory management features coming soon!")
+        # Load inventory data
+        latest_inv = try_read_csv(LATEST_INV_CSV, "Latest Inventory")
+
+        if latest_inv is not None and not latest_inv.empty:
+            st.dataframe(
+                latest_inv,
+                use_container_width=True,
+                height=600
+            )
+
+            # Download button
+            csv = latest_inv.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label="📥 Download Inventory Report",
+                data=csv,
+                file_name=f"inventory_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                mime="text/csv",
+                type="primary"
+            )
+        else:
+            st.info("No inventory data available. Please run the dashboard to generate data.")
 
 
 if __name__ == "__main__":
