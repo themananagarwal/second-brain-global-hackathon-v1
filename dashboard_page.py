@@ -1183,11 +1183,11 @@ def render_dashboard_page(sales_df, latest_inv, eoq_df, rop_df, mix_pct):
             def highlight_action(row):
                 if 'Action' in row:
                     if row['Action'] == 'REORDER NOW':
-                        return ['background-color: #FFF5F5'] * len(row)
+                        return ['background-color: #FFCCCB; color: black'] * len(row)
                     elif row['Action'] == 'REORDER SOON':
-                        return ['background-color: #FFF8F0'] * len(row)
+                        return ['background-color: #FFE4B5; color: black'] * len(row)
                     elif row['Action'] == 'ADEQUATE':
-                        return ['background-color: #F0FFF4'] * len(row)
+                        return ['background-color: #C8E6C8; color: black'] * len(row)
                 return [''] * len(row)
 
             st.dataframe(
