@@ -1,7 +1,7 @@
 # app.py
 import os
 from io import StringIO
-from contextual import redirect_stdout
+from contextlib import redirect_stdout  # Fixed typo: was "contextual" should be "contextlib"
 import importlib
 import importlib.util
 import types
@@ -102,45 +102,13 @@ def compute_pipeline():
 
 
 # =========================
-# Navigation Header
-# =========================
-def render_navigation():
-    st.markdown("""
-    <div class="nav-container">
-        <div class="nav-brand">
-            <div class="brand-icon">🧠</div>
-            <div class="brand-text">Second Brain</div>
-        </div>
-        <div class="nav-tabs">
-            <div class="nav-tab {}" onclick="setPage('Home')">
-                <i class="nav-icon">🏠</i>
-                <span>Home</span>
-            </div>
-            <div class="nav-tab {}" onclick="setPage('Dashboard')">
-                <i class="nav-icon">📊</i>
-                <span>Dashboard</span>
-            </div>
-            <div class="nav-tab {}" onclick="setPage('Inventory')">
-                <i class="nav-icon">📦</i>
-                <span>Inventory</span>
-            </div>
-        </div>
-        <div class="nav-actions">
-            <div class="nav-action">🔔</div>
-            <div class="nav-action">⚙️</div>
-            <div class="nav-action">👤</div>
-        </div>
-    </div>
-    """.format(
-        "active" if st.session_state["current_page"] == "Home" else "",
-        "active" if st.session_state["current_page"] == "Dashboard" else "",
-        "active" if st.session_state["current_page"] == "Inventory" else ""
-    ), unsafe_allow_html=True)
-
-
-# =========================
 # Page Navigation
 # =========================
+st.markdown("""
+<div style="display: flex; justify-content: center; gap: 1rem; margin-bottom: 2rem; padding: 1rem; background: rgba(255,255,255,0.1); border-radius: 1rem;">
+</div>
+""", unsafe_allow_html=True)
+
 col1, col2, col3 = st.columns([1, 1, 1])
 
 with col1:
@@ -194,10 +162,14 @@ elif st.session_state["current_page"] == "Dashboard":
         mix_pct=mix_pct if mix_pct is not None else pd.DataFrame()
     )
 elif st.session_state["current_page"] == "Inventory":
-    st.markdown('<div class="page-container">', unsafe_allow_html=True)
-    st.markdown('<div class="page-header">', unsafe_allow_html=True)
-    st.markdown('<h1 class="page-title">Inventory Management</h1>', unsafe_allow_html=True)
-    st.markdown('<p class="page-subtitle">Coming soon - Advanced inventory tracking and management tools</p>',
-                unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown("""
+    <div class="hero-section">
+        <div class="hero-title" style="font-size: 3rem;">Inventory Management</div>
+        <div class="hero-subtitle">Advanced inventory tracking and management tools - Coming Soon</div>
+        <div style="margin-top: 2rem;">
+            <div class="btn btn-secondary" style="background: rgba(255,255,255,0.2); border: 2px solid rgba(255,255,255,0.3); color: white;">
+                🚧 Under Development
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
