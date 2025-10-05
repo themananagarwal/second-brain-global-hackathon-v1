@@ -186,6 +186,8 @@ def render_home_page():
   </div>
 </div>
 """
+    st.markdown(textwrap.dedent(html), unsafe_allow_html=True)
+
     # --- FEATURE CARDS SECTION ---
     st.markdown("""
     <style>
