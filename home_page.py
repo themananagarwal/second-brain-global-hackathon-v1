@@ -88,8 +88,8 @@ def render_home_page():
 
       .btn {
         display:inline-flex;
-        align-items:left;
-        justify-content:left;
+        align-items:center;
+        justify-content:center;
         padding:.8rem 1.2rem;
         border-radius:.75rem;
         font-weight:700;
@@ -171,7 +171,6 @@ def render_home_page():
   </div>
 </div>
 """
-    
     st.markdown(textwrap.dedent(html), unsafe_allow_html=True)
 
     # --- Features Section ---
