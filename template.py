@@ -1,264 +1,508 @@
 # template.py
-import os
-import pandas as pd
 import streamlit as st
-import plotly.express as px
-import plotly.graph_objects as go
 
-# ---------- Styles ----------
-def inject_css():
+
+def inject_global_css():
     st.markdown("""
     <style>
-    :root{
-      --gap: 16px; --gap-lg: 22px;
-      --bg: #0b1220; --card:#0f172a; --muted:#94a3b8; --text:#e2e8f0;
-    }
-    html, body, [data-testid="stAppViewContainer"]{
-      background: var(--bg); color: var(--text);
-      padding: 12px 18px;
-    }
-    div[data-testid="stHorizontalBlock"]{ margin-left: -10px; margin-right: -10px; }
-    div[data-testid="column"]{ padding-left: 10px; padding-right: 10px; }
+    /* Import Google Fonts */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
-    .section-title{ font-size:22px; font-weight:700; margin: 2px 0 10px; }
-    .h2{ font-size:16px; font-weight:600; margin: 16px 0 10px; }
-    .small{ color: var(--muted); font-size: 12px; }
+    /* Root Variables - SecondBrain Color Scheme */
+    :root {
+        /* Colors from screenshots */
+        --primary-cyan: #1DB7E8;
+        --primary-blue: #0EA5E9;
+        --dark-blue: #1e293b;
+        --light-blue: #38bdf8;
+        --gradient-start: #0ea5e9;
+        --gradient-end: #06b6d4;
 
-    div[data-testid="stPlotlyChart"],
-    div[data-testid="stDataFrame"],
-    div[data-testid="stMetric"],
-    div[data-baseweb="notification"]{
-      border: 1px solid rgba(148,163,184,0.12);
-      background: var(--card);
-      border-radius: 12px;
-      padding: 16px;
-      margin-bottom: var(--gap-lg);
-      box-shadow: 0 0 0 1px rgba(99,102,241,0.05), 0 8px 24px rgba(2,6,23,0.45);
-      overflow: hidden;
-    }
-    div[data-testid="stMetric"]{ padding: 18px; }
-    div[data-testid="stMetricLabel"] p { color: #94a3b8 !important; font-size: 13px; margin-bottom: 6px; }
-    div[data-testid="stMetricValue"]   { color: #e2e8f0 !important; font-size: 28px; font-weight: 800; }
-    div[data-testid="stMetricDelta"]   { color: #86efac !important; font-weight: 600; }
-    div[data-testid="stMetricDelta"] span{
-      background: rgba(34,197,94,0.15); padding: 2px 8px; border-radius: 999px;
-    }
-    .js-plotly-plot .modebar{
-      top: 8px !important; right: 8px !important;
-      background: rgba(2,6,23,0.35) !important; border-radius: 8px;
+        /* Neutrals */
+        --white: #ffffff;
+        --gray-50: #f8fafc;
+        --gray-100: #f1f5f9;
+        --gray-200: #e2e8f0;
+        --gray-300: #cbd5e1;
+        --gray-400: #94a3b8;
+        --gray-500: #64748b;
+        --gray-600: #475569;
+        --gray-700: #334155;
+        --gray-800: #1e293b;
+        --gray-900: #0f172a;
+
+        /* Semantic Colors */
+        --success: #22c55e;
+        --warning: #f59e0b;
+        --error: #ef4444;
+        --info: var(--primary-cyan);
+
+        /* Spacing */
+        --spacing-xs: 0.25rem;
+        --spacing-sm: 0.5rem;
+        --spacing-md: 1rem;
+        --spacing-lg: 1.5rem;
+        --spacing-xl: 2rem;
+        --spacing-2xl: 3rem;
+
+        /* Shadows */
+        --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+
+        /* Border Radius */
+        --radius-sm: 0.375rem;
+        --radius-md: 0.5rem;
+        --radius-lg: 0.75rem;
+        --radius-xl: 1rem;
+        --radius-2xl: 1.5rem;
     }
 
-    a.cta, button.cta {
-      display:inline-block; background:#6366f1; color:#0b1220; padding:10px 14px; 
-      border-radius:10px; text-decoration:none; font-weight:700; border:none;
+    /* Base Styles */
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
     }
-    a.cta:hover, button.cta:hover { filter:brightness(1.1); }
 
-    .hero{
-      border: 1px solid rgba(148,163,184,0.12);
-      background: #0f172a;
-      border-radius: 14px;
-      padding: 18px;
-      margin-bottom: 20px;
-      box-shadow: 0 0 0 1px rgba(99,102,241,0.05), 0 8px 24px rgba(2,6,23,0.45);
+    html, body {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+        background: var(--gray-50);
+        color: var(--gray-800);
+        line-height: 1.6;
+    }
+
+    /* Hide Streamlit Elements */
+    .stAppHeader, .stAppToolbar, .stDecoration, .stStatusWidget {
+        display: none !important;
+    }
+
+    /* Main App Container */
+    .stApp {
+        background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%);
+        min-height: 100vh;
+    }
+
+    /* Remove default Streamlit padding */
+    .main .block-container {
+        padding: 0 !important;
+        max-width: 100% !important;
+    }
+
+    /* Page Container */
+    .page-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: var(--spacing-xl);
+        min-height: 100vh;
+    }
+
+    /* Navigation Styles */
+    .nav-container {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: var(--spacing-md) var(--spacing-xl);
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(20px);
+        border-bottom: 1px solid var(--gray-200);
+        margin-bottom: var(--spacing-xl);
+    }
+
+    .nav-brand {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-sm);
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--gray-800);
+    }
+
+    .brand-icon {
+        font-size: 2rem;
+    }
+
+    .nav-tabs {
+        display: flex;
+        gap: var(--spacing-sm);
+    }
+
+    .nav-tab {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-xs);
+        padding: var(--spacing-sm) var(--spacing-md);
+        border-radius: var(--radius-lg);
+        color: var(--gray-600);
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .nav-tab:hover {
+        background: var(--gray-100);
+        color: var(--gray-800);
+    }
+
+    .nav-tab.active {
+        background: var(--primary-cyan);
+        color: var(--white);
+    }
+
+    .nav-actions {
+        display: flex;
+        gap: var(--spacing-sm);
+    }
+
+    .nav-action {
+        padding: var(--spacing-sm);
+        border-radius: var(--radius-md);
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .nav-action:hover {
+        background: var(--gray-100);
+    }
+
+    /* Page Headers */
+    .page-header {
+        text-align: center;
+        margin-bottom: var(--spacing-2xl);
+    }
+
+    .page-title {
+        font-size: 3rem;
+        font-weight: 800;
+        color: var(--white);
+        margin-bottom: var(--spacing-md);
+        text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .page-subtitle {
+        font-size: 1.2rem;
+        color: rgba(255, 255, 255, 0.9);
+        max-width: 600px;
+        margin: 0 auto;
+    }
+
+    /* Card Styles */
+    .card {
+        background: var(--white);
+        border-radius: var(--radius-xl);
+        padding: var(--spacing-xl);
+        box-shadow: var(--shadow-lg);
+        border: 1px solid var(--gray-200);
+        margin-bottom: var(--spacing-lg);
+        transition: all 0.3s ease;
+    }
+
+    .card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-xl);
+    }
+
+    .card-header {
+        margin-bottom: var(--spacing-lg);
+    }
+
+    .card-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--gray-800);
+        margin-bottom: var(--spacing-xs);
+    }
+
+    .card-subtitle {
+        color: var(--gray-500);
+        font-size: 0.875rem;
+    }
+
+    /* Feature Cards */
+    .feature-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: var(--spacing-xl);
+        margin: var(--spacing-2xl) 0;
+    }
+
+    .feature-card {
+        background: var(--white);
+        border-radius: var(--radius-xl);
+        padding: var(--spacing-xl);
+        text-align: center;
+        box-shadow: var(--shadow-md);
+        transition: all 0.3s ease;
+        border: 1px solid var(--gray-200);
+    }
+
+    .feature-card:hover {
+        transform: translateY(-4px);
+        box-shadow: var(--shadow-xl);
+        border-color: var(--primary-cyan);
+    }
+
+    .feature-icon {
+        font-size: 3rem;
+        margin-bottom: var(--spacing-lg);
+        color: var(--primary-cyan);
+    }
+
+    .feature-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--gray-800);
+        margin-bottom: var(--spacing-md);
+    }
+
+    .feature-description {
+        color: var(--gray-600);
+        line-height: 1.6;
+    }
+
+    /* Buttons */
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--spacing-xs);
+        padding: var(--spacing-md) var(--spacing-xl);
+        border-radius: var(--radius-lg);
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.2s ease;
+        cursor: pointer;
+        border: none;
+        font-size: 1rem;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+        color: var(--white);
+        box-shadow: var(--shadow-md);
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-lg);
+    }
+
+    .btn-secondary {
+        background: var(--white);
+        color: var(--gray-700);
+        border: 2px solid var(--gray-200);
+    }
+
+    .btn-secondary:hover {
+        border-color: var(--primary-cyan);
+        color: var(--primary-cyan);
+    }
+
+    /* Metrics */
+    .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: var(--spacing-lg);
+        margin-bottom: var(--spacing-2xl);
+    }
+
+    .metric-card {
+        background: var(--white);
+        border-radius: var(--radius-lg);
+        padding: var(--spacing-lg);
+        box-shadow: var(--shadow-md);
+        border-left: 4px solid var(--primary-cyan);
+    }
+
+    .metric-label {
+        font-size: 0.875rem;
+        color: var(--gray-500);
+        margin-bottom: var(--spacing-xs);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .metric-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--gray-800);
+        margin-bottom: var(--spacing-xs);
+    }
+
+    .metric-change {
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+
+    .metric-change.positive {
+        color: var(--success);
+    }
+
+    .metric-change.negative {
+        color: var(--error);
+    }
+
+    /* Charts and Plots */
+    div[data-testid="stPlotlyChart"] {
+        background: var(--white);
+        border-radius: var(--radius-lg);
+        padding: var(--spacing-lg);
+        box-shadow: var(--shadow-md);
+        border: 1px solid var(--gray-200);
+        margin-bottom: var(--spacing-lg);
+    }
+
+    /* DataFrames */
+    div[data-testid="stDataFrame"] {
+        background: var(--white);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-md);
+        border: 1px solid var(--gray-200);
+        overflow: hidden;
+    }
+
+    /* Info/Warning/Success Messages */
+    div[data-baseweb="notification"] {
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-md);
+    }
+
+    /* Hero Section */
+    .hero-section {
+        text-align: center;
+        padding: var(--spacing-2xl) 0;
+        background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%);
+        color: var(--white);
+        border-radius: var(--radius-2xl);
+        margin-bottom: var(--spacing-2xl);
+    }
+
+    .hero-title {
+        font-size: 4rem;
+        font-weight: 800;
+        margin-bottom: var(--spacing-lg);
+        text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .hero-subtitle {
+        font-size: 1.5rem;
+        margin-bottom: var(--spacing-2xl);
+        opacity: 0.9;
+        max-width: 800px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .hero-buttons {
+        display: flex;
+        justify-content: center;
+        gap: var(--spacing-lg);
+        flex-wrap: wrap;
+    }
+
+    /* CTA Section */
+    .cta-section {
+        background: var(--white);
+        border-radius: var(--radius-2xl);
+        padding: var(--spacing-2xl);
+        text-align: center;
+        box-shadow: var(--shadow-lg);
+        margin: var(--spacing-2xl) 0;
+    }
+
+    .cta-title {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: var(--gray-800);
+        margin-bottom: var(--spacing-lg);
+    }
+
+    .cta-subtitle {
+        font-size: 1.1rem;
+        color: var(--gray-600);
+        margin-bottom: var(--spacing-2xl);
+        max-width: 600px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .cta-features {
+        display: flex;
+        justify-content: center;
+        gap: var(--spacing-xl);
+        margin-top: var(--spacing-xl);
+        flex-wrap: wrap;
+    }
+
+    .cta-feature {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-xs);
+        color: var(--gray-600);
+        font-size: 0.875rem;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        .page-container {
+            padding: var(--spacing-md);
+        }
+
+        .page-title {
+            font-size: 2rem;
+        }
+
+        .hero-title {
+            font-size: 2.5rem;
+        }
+
+        .hero-subtitle {
+            font-size: 1.2rem;
+        }
+
+        .feature-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .metrics-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .nav-container {
+            flex-direction: column;
+            gap: var(--spacing-md);
+        }
+
+        .hero-buttons {
+            flex-direction: column;
+            align-items: center;
+        }
+    }
+
+    /* Streamlit Button Overrides */
+    .stButton button {
+        background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+        color: var(--white);
+        border: none;
+        border-radius: var(--radius-lg);
+        padding: var(--spacing-md) var(--spacing-xl);
+        font-weight: 600;
+        box-shadow: var(--shadow-md);
+        transition: all 0.2s ease;
+    }
+
+    .stButton button:hover {
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-lg);
+        filter: brightness(1.05);
+    }
+
+    /* Sidebar Styles */
+    .css-1d391kg {
+        background: var(--white);
+    }
+
+    .css-1d391kg .css-17eq0hr {
+        background: var(--white);
     }
     </style>
     """, unsafe_allow_html=True)
-
-# ---------- Home (Landing) ----------
-def render_home():
-    st.markdown('<div class="section-title">SecondBrainn for Inventory</div>', unsafe_allow_html=True)
-    st.markdown('<div class="hero">Drive lower carrying costs and fewer stockouts with AI-backed reorder plans and live dashboards.</div>', unsafe_allow_html=True)
-    c1, c2 = st.columns(2)
-    with c1:
-        st.markdown("#### What’s inside")
-        st.markdown("- Real-time EOQ and ROP suggestions\n- Inventory timeline and category mix\n- Downloadable tables and interactive charts")
-        st.markdown('<a class="cta" href="#dashboard">Go to Dashboard</a>', unsafe_allow_html=True)
-    with c2:
-        st.markdown("#### Getting started")
-        st.markdown("- Place data files in ./data (Sales, Purchase, Base Inventory)\n- Use sidebar Controls, then click Rebuild\n- Toggle sections via Dashboard sections")
-
-# ---------- KPI cards ----------
-def kpis(sales_df: pd.DataFrame, rop_df: pd.DataFrame):
-    col1, col2, col3, col4 = st.columns(4)
-    total_rev = 0.0
-    if sales_df is not None and {"Quantity","Rate"}.issubset(sales_df.columns):
-        total_rev = float((sales_df["Quantity"] * sales_df["Rate"]).sum())
-    active = int(rop_df["need_reorder"].sum()) if rop_df is not None and "need_reorder" in rop_df.columns else 0
-    with col1: st.metric(label="Total Revenue", value=f"₹{total_rev:,.0f}", delta="+12.5%")
-    with col2: st.metric(label="Active Orders", value=f"{active}", delta="+8.2%")
-    with col3: st.metric(label="Efficiency Score", value="94%", delta="+3.1%")
-    with col4: st.metric(label="Cost Savings", value="₹12,450", delta="+15.8%")
-
-# ---------- Charts / Tables (dashboard) ----------
-def chart_sales_vs_orders(sales_df: pd.DataFrame):
-    st.markdown('<div class="h2">Sales vs Orders</div>', unsafe_allow_html=True)
-    s = sales_df.copy()
-    s["Date"] = pd.to_datetime(s["Date"])
-    monthly = s.groupby(s["Date"].dt.to_period("M")).agg(Sales=("Value","sum"), Orders=("Quantity","sum")).reset_index()
-    monthly["Date"] = monthly["Date"].dt.to_timestamp()
-    fig = go.Figure()
-    fig.add_bar(x=monthly["Date"], y=monthly["Sales"], name="Sales", marker_color="#6366f1")
-    fig.add_scatter(x=monthly["Date"], y=monthly["Orders"], name="Orders", mode="lines+markers", line=dict(color="#06b6d4", width=2))
-    fig.update_layout(height=320, margin=dict(l=24, r=18, t=26, b=26),
-                      paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(16,24,39,1)", font_color="#e2e8f0")
-    st.plotly_chart(fig, use_container_width=True, theme=None)
-
-def chart_inventory_trend(latest_inv: pd.DataFrame, eoq_df: pd.DataFrame):
-    st.markdown('<div class="h2">Inventory trend</div>', unsafe_allow_html=True)
-    inv = latest_inv.copy()
-    inv["Quantity"] = pd.to_numeric(inv["Quantity"], errors="coerce").fillna(0)
-    inv = inv.sort_values("Particular")
-    eoq_map = dict(zip(eoq_df.get("Particular", []), eoq_df.get("EOQ", []))) if eoq_df is not None and not eoq_df.empty else {}
-    inv["Optimal"] = inv["Particular"].map(eoq_map).fillna(inv["Quantity"].median() if len(inv) else 0)
-    fig2 = go.Figure()
-    fig2.add_scatter(x=inv["Particular"], y=inv["Quantity"], name="Stock", mode="lines", line=dict(color="#22c55e"))
-    fig2.add_scatter(x=inv["Particular"], y=inv["Optimal"], name="Optimal", mode="lines", line=dict(color="#f59e0b", dash="dash"))
-    fig2.update_layout(height=320, margin=dict(l=24, r=18, t=26, b=26),
-                       paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(16,24,39,1)", font_color="#e2e8f0")
-    st.plotly_chart(fig2, use_container_width=True, theme=None)
-
-def chart_category_mix(sales_df: pd.DataFrame):
-    st.markdown('<div class="h2">Category mix</div>', unsafe_allow_html=True)
-    def extract(pt):
-        for t in ["DWR","DIR","HDHMR"]:
-            if isinstance(pt, str) and t in pt: return t
-        return "OTHER"
-    s = sales_df.copy()
-    s["Category"] = s["Particular"].apply(extract)
-    pie = s.groupby("Category")["Quantity"].sum().reset_index()
-    fig3 = px.pie(pie, names="Category", values="Quantity",
-                  color_discrete_sequence=["#6366f1","#06b6d4","#22c55e","#f59e0b","#ef4444"])
-    fig3.update_layout(height=320, margin=dict(l=24, r=18, t=26, b=26),
-                       paper_bgcolor="rgba(0,0,0,0)", font_color="#e2e8f0")
-    st.plotly_chart(fig3, use_container_width=True, theme=None)
-
-def chart_eoq(eoq_df: pd.DataFrame):
-    st.markdown('<div class="h2">EOQ by SKU</div>', unsafe_allow_html=True)
-    top = eoq_df.sort_values("EOQ", ascending=False).head(15)
-    fig = px.bar(top, x="Particular", y="EOQ", color_discrete_sequence=["#6366f1"])
-    fig.update_layout(height=320, margin=dict(l=24, r=18, t=26, b=26),
-                      paper_bgcolor="rgba(0,0,0,0)", font_color="#e2e8f0")
-    st.plotly_chart(fig, use_container_width=True, theme=None)
-
-def table_inventory_vs_rop(rop_df: pd.DataFrame):
-    st.markdown('<div class="h2">Inventory vs ROP</div>', unsafe_allow_html=True)
-    table = rop_df[["Particular","inventory_position","reorder_point","need_reorder","suggested_order_qty"]] \
-            .sort_values(["need_reorder","Particular"], ascending=[False, True])
-    st.dataframe(table, use_container_width=True)
-
-def table_reorder_suggestions(rop_df: pd.DataFrame):
-    st.markdown('<div class="h2">Reorder suggestions</div>', unsafe_allow_html=True)
-    suggest = rop_df[rop_df["need_reorder"] == True][["Particular","suggested_order_qty","EOQ","lead_time_days","service_level"]]
-    st.dataframe(suggest.sort_values("suggested_order_qty", ascending=False), use_container_width=True)
-
-def chart_monthly_mix(mix_pct: pd.DataFrame):
-    st.markdown('<div class="h2">Monthly mix</div>', unsafe_allow_html=True)
-    mp = mix_pct.reset_index().melt(id_vars="YearMonth", var_name="Type", value_name="Pct")
-    mp["YearMonth"] = mp["YearMonth"].astype(str)
-    fig = px.area(mp, x="YearMonth", y="Pct", color="Type",
-                  color_discrete_sequence=["#6366f1","#06b6d4","#22c55e","#f59e0b"])
-    fig.update_layout(height=320, margin=dict(l=24, r=18, t=26, b=26),
-                      paper_bgcolor="rgba(0,0,0,0)", font_color="#e2e8f0")
-    st.plotly_chart(fig, use_container_width=True, theme=None)
-
-# ---------- Simulation UI ----------
-def simulation_bar_centered(disabled: bool = False):
-    left, mid, right = st.columns([2, 3, 2])
-    clicked = False
-    with mid:
-        clicked = st.button("Run simulation", type="primary", use_container_width=True, disabled=disabled)
-    st.markdown('<div class="small" style="text-align:center;">Runs a 90‑day day‑by‑day sim using ROP/EOQ & truck rules, then writes CSV outputs.</div>', unsafe_allow_html=True)
-    return clicked
-
-def _find_day_column(df: pd.DataFrame):
-    for c in ["day", "Day", "DAY", "date", "Date"]:
-        if c in df.columns:
-            return c
-    return None
-
-def _add_day_index(df: pd.DataFrame) -> pd.DataFrame:
-    df = df.copy()
-    col = _find_day_column(df)
-    if col is None:
-        return df
-    if "date" in col.lower():
-        # Map unique sorted dates to 1..N
-        try:
-            d = pd.to_datetime(df[col])
-        except Exception:
-            return df
-        mapper = {v: i+1 for i, v in enumerate(sorted(d.dropna().unique()))}
-        df["__day_idx__"] = d.map(mapper)
-    else:
-        df["__day_idx__"] = pd.to_numeric(df[col], errors="coerce").astype("Int64")
-    return df
-
-def _day_filtered_table(df: pd.DataFrame, title: str):
-    df = _add_day_index(df)
-    if "__day_idx__" in df.columns:
-        min_day = int(df["__day_idx__"].min()) if pd.notna(df["__day_idx__"].min()) else 1
-        max_day = int(df["__day_idx__"].max()) if pd.notna(df["__day_idx__"].max()) else 90
-        start, end = st.slider(f"{title} — day range", min_value=min_day, max_value=max_day, value=(min_day, max_day))
-        view = df[(df["__day_idx__"] >= start) & (df["__day_idx__"] <= end)].drop(columns=["__day_idx__"])
-        st.dataframe(view, use_container_width=True)
-    else:
-        st.dataframe(df, use_container_width=True)
-
-def simulation_results_panel(log_text: str, base_dir: str = "data"):
-    # Known outputs (best‑effort; only render those that exist)
-    paths = {
-        "Daily summary": os.path.join(base_dir, "sim_daily_summary.csv"),
-        "Orders":        os.path.join(base_dir, "sim_orders.csv"),
-        "Backorders":    os.path.join(base_dir, "sim_backorders.csv"),
-        "Final inventory": os.path.join(base_dir, "sim_final_inventory.csv"),
-    }
-    tabs = st.tabs(["Daily summary", "Orders", "Backorders", "Final inventory", "Log", "Downloads"])
-    # Tab 1: Daily summary
-    with tabs[0]:
-        p = paths["Daily summary"]
-        if os.path.exists(p):
-            df = pd.read_csv(p)
-            _day_filtered_table(df, "Daily summary")
-        else:
-            st.info("No daily summary file found.")
-    # Tab 2: Orders
-    with tabs[1]:
-        p = paths["Orders"]
-        if os.path.exists(p):
-            df = pd.read_csv(p)
-            _day_filtered_table(df, "Orders")
-        else:
-            st.info("No orders file found.")
-    # Tab 3: Backorders
-    with tabs[2]:
-        p = paths["Backorders"]
-        if os.path.exists(p):
-            df = pd.read_csv(p)
-            _day_filtered_table(df, "Backorders")
-        else:
-            st.info("No backorders file found.")
-    # Tab 4: Final inventory
-    with tabs[3]:
-        p = paths["Final inventory"]
-        if os.path.exists(p):
-            df = pd.read_csv(p)
-            st.dataframe(df, use_container_width=True)
-            st.download_button("Download final inventory (CSV)", data=open(p, "rb").read(),
-                               file_name="sim_final_inventory.csv", mime="text/csv")
-        else:
-            st.info("No final inventory file found.")
-    # Tab 5: Raw log
-    with tabs[4]:
-        with st.expander("View simulation log", expanded=False):
-            st.code(log_text or "(no output)")
-    # Tab 6: Downloads
-    with tabs[5]:
-        any_file = False
-        for name, p in paths.items():
-            if os.path.exists(p):
-                any_file = True
-                st.download_button(f"Download {name} CSV", data=open(p, "rb").read(),
-                                   file_name=os.path.basename(p), mime="text/csv")
-        if not any_file:
-            st.info("No simulation CSV outputs available yet.")
