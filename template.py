@@ -55,7 +55,7 @@ def inject_global_css():
         --color-white: #FFFFFF;
         --color-background: #F8F9FA;
         --color-text-primary: #2C3E50;
-        --color-text-light: #ffffff;
+        --color-text-light: #6C757D;
         --color-border: #E5E7EB;
 
         /* Semantic Colors */
