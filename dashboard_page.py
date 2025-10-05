@@ -968,33 +968,32 @@ def render_dashboard_page(sales_df, latest_inv, eoq_df, rop_df, mix_pct):
                                                                 config={'displayModeBar': False})
 
                                         # Backorder Chart
-                                        with chart_col2:
-                                            if 'open_backorders_units' in daily_summary.columns:
-                                                st.markdown("#### 📉 Daily Backorders")
-                                                fig2 = go.Figure()
-                                                fig2.add_trace(go.Bar(
-                                                    x=daily_summary.index,
-                                                    y=daily_summary['open_backorders_units'],
-                                                    name='Open Backorders',
-                                                    marker_color='#DC3545'
-                                                ))
+                                        # Daily Backorders Chart (daily values)
+                                        fig_daily = go.Figure()
+                                        fig_daily.add_trace(go.Bar(
+                                            x=daily_summary[
+                                                'Date'] if 'Date' in daily_summary.columns else daily_summary.index,
+                                            y=daily_summary['open_backorders_units'],
+                                            name='Daily Backorders',
+                                            marker_color='#DC3545',
+                                            text=daily_summary['open_backorders_units'],
+                                            textposition='outside',
+                                            hovertemplate='<b>%{x}</b><br>Daily Backorders: %{y}<extra></extra>'
+                                        ))
 
-                                                fig2.update_layout(
-                                                    height=350,
-                                                    margin=dict(l=20, r=20, t=20, b=20),
-                                                    paper_bgcolor='rgba(0,0,0,0)',
-                                                    plot_bgcolor='rgba(0,0,0,0)',
-                                                    font=dict(color='#374151', size=11)
-                                                )
+                                        fig_daily.update_layout(
+                                            title="Daily Backorders Over Time",
+                                            height=300,
+                                            margin=dict(l=20, r=20, t=40, b=20),
+                                            paper_bgcolor='rgba(0,0,0,0)',
+                                            plot_bgcolor='rgba(0,0,0,0)',
+                                            font=dict(color='#374151', size=11)
+                                        )
+                                        fig_daily.update_xaxes(showgrid=False)
+                                        fig_daily.update_yaxes(showgrid=True, gridcolor='rgba(148, 163, 184, 0.15)',
+                                                               title='Units')
 
-                                                fig2.update_xaxes(showgrid=False)
-                                                fig2.update_yaxes(showgrid=True, gridcolor='rgba(148, 163, 184, 0.15)',
-                                                                  title='Units')
-
-                                                st.plotly_chart(fig2, use_container_width=True,
-                                                                config={'displayModeBar': False})
-
-                                    tab_index += 1
+                                        st.plotly_chart(fig_daily, use_container_width=True)
 
                                 # Daily Summary Tab
                                 if has_daily_summary:
