@@ -317,7 +317,7 @@ def inject_global_css():
 
   /* move padding to inner content so the bar spans edge-to-edge */
   padding: 0;
-  height: 64px;        /* pick your height */
+  height: 60px;        /* pick your height */
 }
 
 /* Optional inner wrapper to keep your old centered layout */
