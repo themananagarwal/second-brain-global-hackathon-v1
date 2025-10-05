@@ -54,7 +54,7 @@ def inject_global_css():
         /* Neutral Colors */
         --color-white: #FFFFFF;
         --color-background: #F8F9FA;
-        --color-text-primary: #000000;
+        --color-text-primary: #2C3E50;
         --color-text-light: #ffffff;
         --color-border: #E5E7EB;
 
@@ -527,10 +527,9 @@ def inject_global_css():
     .chart-title {
         font-size: 1.25rem;
         font-weight: 600;
-        color: #000000;
+        color: var(--color-text-primary);
         margin-bottom: var(--spacing-sm);
     }
-
 
     /* ========================= */
     /* UTILITY CLASSES */
