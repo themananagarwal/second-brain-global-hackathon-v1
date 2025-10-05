@@ -187,7 +187,8 @@ def render_dashboard_page(sales_df, latest_inv, eoq_df, rop_df, mix_pct):
     with col2:
         st.markdown("""
         <div class="chart-container">
-            <h3 class="chart-title">🎯 Product Performance</h3>
+            <h3 style="color: black; font-size: 1.5rem; font-weight: 600; margin-bottom: 12px;">🎯 Product Performance</h3>
+        </div>
         """, unsafe_allow_html=True)
 
         try:
@@ -237,7 +238,8 @@ def render_dashboard_page(sales_df, latest_inv, eoq_df, rop_df, mix_pct):
     with col1:
         st.markdown("""
         <div class="chart-container">
-            <h3 class="chart-title">📦 Inventory vs Target Levels</h3>
+            <h3 style="color: black; font-size: 1.5rem; font-weight: 600; margin-bottom: 12px;">📦 Inventory vs Target Levels</h3>
+        </div>
         """, unsafe_allow_html=True)
 
         try:
@@ -318,7 +320,8 @@ def render_dashboard_page(sales_df, latest_inv, eoq_df, rop_df, mix_pct):
     with col2:
         st.markdown("""
         <div class="chart-container">
-            <h3 class="chart-title">🚨 Reorder Priority Status</h3>
+            <h3 style="color: black; font-size: 1.25rem; font-weight: 600; margin-bottom: 12px;">🚨 Reorder Priority Status</h3>
+        </div>
         """, unsafe_allow_html=True)
 
         try:
@@ -388,7 +391,8 @@ def render_dashboard_page(sales_df, latest_inv, eoq_df, rop_df, mix_pct):
                 st.markdown("<div style='margin: 32px 0;'>", unsafe_allow_html=True)
                 st.markdown("""
                 <div class="chart-container">
-                    <h3 class="chart-title">📅 Monthly Product Mix Evolution</h3>
+                    <h3 style="color: black; font-size: 1.5rem; font-weight: 600; margin-bottom: 12px;">📅 Monthly Product Mix Evolution</h3>
+                </div>
                 """, unsafe_allow_html=True)
 
                 fig = go.Figure()
