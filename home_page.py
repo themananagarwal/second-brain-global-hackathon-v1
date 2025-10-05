@@ -8,13 +8,12 @@ def render_home_page():
     # --- Load assets from assets folder ---
     assets_dir = Path(__file__).parent / "assets"
     logo_path = assets_dir / "brain.svg"
-    demo_path = assets_dir / "Demo.jpg"
+    demo_path = assets_dir / "Demo.svg"   # CHANGED: use the SVG asset
 
     logo_b64 = base64.b64encode(logo_path.read_bytes()).decode("utf-8")
-    demo_b64 = base64.b64encode(demo_path.read_bytes()).decode("utf-8")
+    demo_b64 = base64.b64encode(demo_path.read_bytes()).decode("utf-8")  # encode SVG as base64
 
     # --- CSS (transparent container, image right, text left) ---
-    
     st.markdown("""
     <style>
       .hero-transparent {
@@ -136,31 +135,30 @@ def render_home_page():
       }
 
       /* Buttons row BELOW the hero, left-aligned to same container */
-    .hero-actions {
-        max-width: 1200px;
-        margin: 1.5rem auto 0;
-        display: flex;
-        gap: .75rem;
-    }
+      .hero-actions {
+          max-width: 1200px;
+          margin: 1.5rem auto 0;
+          display: flex;
+          gap: .75rem;
+      }
 
-    .btn {
-        display:inline-flex;
-        align-items:center;
-        justify-content:center;
-        padding:.8rem 1.2rem;
-        border-radius:.75rem;
-        font-weight:700;
-        text-decoration:none;
-        border:1px solid transparent;
-        transition: 0.2s;
-    }
+      .btn {
+          display:inline-flex;
+          align-items:center;
+          justify-content:center;
+          padding:.8rem 1.2rem;
+          border-radius:.75rem;
+          font-weight:700;
+          text-decoration:none;
+          border:1px solid transparent;
+          transition: 0.2s;
+      }
 
-    .btn-primary { background:#fff; color:#0ea5e9; }
-    .btn-secondary { background:#fff; color:#0ea5e9; }
-    .btn-primary:hover, .btn-secondary:hover { background:#f0f9ff; }
+      .btn-primary { background:#fff; color:#0ea5e9; }
+      .btn-secondary { background:#fff; color:#0ea5e9; }
+      .btn-primary:hover, .btn-secondary:hover { background:#f0f9ff; }
     </style>
     """, unsafe_allow_html=True)
-
 
     # --- HERO SECTION ---
     html = f"""
@@ -187,7 +185,8 @@ def render_home_page():
     </div>
 
     <div class="hero-right">
-      <img src="data:image/jpeg;base64,{demo_b64}" alt="Dashboard demo" />
+      <!-- CHANGED: embed SVG as data URI -->
+      <img src="data:image/svg+xml;base64,{demo_b64}" alt="Dashboard demo" />
     </div>
   </div>
 </div>
