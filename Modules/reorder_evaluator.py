@@ -1,5 +1,4 @@
 # reorder_evaluator.py
-
 # ------------------------------------------------------------
 # Computes Reorder Points (ROP) per SKU using recent demand
 # and saves results to CSV + Excel.
@@ -169,43 +168,24 @@ def evaluate_reorder_points(
     merged['need_reorder'] = merged['inventory_position'] <= merged['reorder_point']
     merged['suggested_order_qty'] = np.where(merged['need_reorder'], merged['EOQ'], 0).astype(int)
 
-    # -----------------------------
-    # Action Classification (NEW)
-    # -----------------------------
+    # ========== ONLY NEW CODE: Action column ==========
     def determine_action(row):
-        """
-        Classify inventory action priority for dashboard display.
-
-        Returns:
-            str: One of ["REORDER NOW", "REORDER SOON", "ADEQUATE", "OVERSTOCKED"]
-        """
         ip = row['inventory_position']
         rop = row['reorder_point']
         eoq = row['EOQ']
-        safety_stock = row['safety_stock']
+        ss = row['safety_stock']
 
-        # Critical: At or below reorder point
         if ip <= rop:
             return "REORDER NOW"
-
-        # Warning: Within safety stock buffer above ROP
-        elif ip <= (rop + safety_stock * 0.5):
+        elif ip <= (rop + ss * 0.5):
             return "REORDER SOON"
-
-        # Excess: Significantly overstocked
         elif eoq > 0 and ip > (rop + eoq * 1.5):
             return "OVERSTOCKED"
-
-        # Normal: Healthy inventory level
         else:
             return "ADEQUATE"
 
-    # Apply action classification
     merged['Action'] = merged.apply(determine_action, axis=1)
-
-    # Print action summary for verification
-    print("\n📊 Action Summary:")
-    print(merged['Action'].value_counts())
+    # ========== END NEW CODE ==========
 
     # -----------------------------
     # Save & return
