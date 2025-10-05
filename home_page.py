@@ -134,12 +134,32 @@ def render_home_page():
         box-shadow: 0 12px 40px rgba(0,0,0,0.35);
       }
 
-      /* Remove Streamlit’s white background padding */
-      section[data-testid="stMarkdownContainer"] {
-        background: transparent !important;
-      }
+      /* Buttons row BELOW the hero, left-aligned to same container */
+    .hero-actions {
+        max-width: 1200px;
+        margin: 1.5rem auto 0;
+        display: flex;
+        gap: .75rem;
+    }
+
+    .btn {
+        display:inline-flex;
+        align-items:center;
+        justify-content:center;
+        padding:.8rem 1.2rem;
+        border-radius:.75rem;
+        font-weight:700;
+        text-decoration:none;
+        border:1px solid transparent;
+        transition: 0.2s;
+    }
+
+    .btn-primary { background:#fff; color:#0ea5e9; }
+    .btn-secondary { background:#fff; color:#0ea5e9; }
+    .btn-primary:hover, .btn-secondary:hover { background:#f0f9ff; }
     </style>
     """, unsafe_allow_html=True)
+
 
     # --- HERO SECTION ---
     html = f"""
