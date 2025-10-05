@@ -186,56 +186,98 @@ def render_home_page():
   </div>
 </div>
 """
-    st.markdown(textwrap.dedent(html), unsafe_allow_html=True)
-
-    # --- Features Section ---
+    # --- FEATURE CARDS SECTION ---
     st.markdown("""
-    <div class="page-header" style="margin-top: 4rem; text-align: center;">
-        <h2 style="color: var(--gray-800); font-size: 2.5rem; font-weight: 700; margin: 1rem auto;">
-            Intelligent Business <span style="color: #ffffff;">Automation</span>
-        </h2>
-        <p style="color: var(--gray-600); font-size: 1.1rem; max-width: 800px; margin: 1rem auto;">
-            Replace manual decision-making with AI-powered intelligence. See how Second Brain 
-            transforms businesses across industries.
-        </p>
+    <style>
+      .feature-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 1.75rem;
+        margin-top: 4rem;
+      }
+    </style>
+
+    <div class="feature-grid">
+      <!-- Card 1 -->
+      <div class="rounded-lg text-card-foreground shadow-sm relative group hover:shadow-elegant transition-all duration-300 border-0 bg-card/80 backdrop-blur-sm">
+        <div class="flex flex-col space-y-1.5 p-6 pb-4">
+          <div class="flex items-center justify-between mb-4">
+            <div class="p-3 bg-gradient-primary rounded-xl">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                   viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                   stroke-linecap="round" stroke-linejoin="round"
+                   class="lucide lucide-brain h-6 w-6 text-primary-foreground">
+                <path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"></path>
+                <path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"></path>
+                <path d="M15 13a4.5 4.5 0 0 1-3-4 4.5 4.5 0 0 1-3 4"></path>
+                <path d="M17.599 6.5a3 3 0 0 0 .399-1.375"></path>
+                <path d="M6.003 5.125A3 3 0 0 0 6.401 6.5"></path>
+                <path d="M3.477 10.896a4 4 0 0 1 .585-.396"></path>
+                <path d="M19.938 10.5a4 4 0 0 1 .585.396"></path>
+                <path d="M6 18a4 4 0 0 1-1.967-.516"></path>
+                <path d="M19.967 17.484A4 4 0 0 1 18 18"></path>
+              </svg>
+            </div>
+            <div class="inline-flex items-center rounded-full border px-2.5 py-0.5 font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80 text-xs">
+              Core Feature
+            </div>
+          </div>
+          <h3 class="font-semibold tracking-tight text-xl group-hover:text-primary transition-colors">
+            AI-Powered Decision Making
+          </h3>
+        </div>
+        <div class="p-6 pt-0">
+          <p class="text-muted-foreground text-base leading-relaxed">
+            Advanced algorithms analyze your business patterns and make optimal decisions automatically.
+          </p>
+        </div>
+      </div>
+
+      <!-- Card 2 -->
+      <div class="rounded-lg text-card-foreground shadow-sm relative group hover:shadow-elegant transition-all duration-300 border-0 bg-card/80 backdrop-blur-sm">
+        <div class="flex flex-col space-y-1.5 p-6 pb-4">
+          <div class="flex items-center justify-between mb-4">
+            <div class="p-3 bg-gradient-primary rounded-xl">
+              📈
+            </div>
+            <div class="inline-flex items-center rounded-full border px-2.5 py-0.5 font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80 text-xs">
+              Optimization
+            </div>
+          </div>
+          <h3 class="font-semibold tracking-tight text-xl group-hover:text-primary transition-colors">
+            Inventory Optimization
+          </h3>
+        </div>
+        <div class="p-6 pt-0">
+          <p class="text-muted-foreground text-base leading-relaxed">
+            Know exactly when to order, how much to order, and in what combinations for maximum efficiency.
+          </p>
+        </div>
+      </div>
+
+      <!-- Card 3 -->
+      <div class="rounded-lg text-card-foreground shadow-sm relative group hover:shadow-elegant transition-all duration-300 border-0 bg-card/80 backdrop-blur-sm">
+        <div class="flex flex-col space-y-1.5 p-6 pb-4">
+          <div class="flex items-center justify-between mb-4">
+            <div class="p-3 bg-gradient-primary rounded-xl">
+              ⏱️
+            </div>
+            <div class="inline-flex items-center rounded-full border px-2.5 py-0.5 font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80 text-xs">
+              Real-Time
+            </div>
+          </div>
+          <h3 class="font-semibold tracking-tight text-xl group-hover:text-primary transition-colors">
+            Real-Time Monitoring
+          </h3>
+        </div>
+        <div class="p-6 pt-0">
+          <p class="text-muted-foreground text-base leading-relaxed">
+            Continuous tracking of your business metrics with instant alerts when action is needed.
+          </p>
+        </div>
+      </div>
     </div>
     """, unsafe_allow_html=True)
-
-    # --- Feature Cards ---
-    col1, col2, col3 = st.columns(3)
-
-    with col1:
-        st.markdown("""
-        <div class="feature-card">
-            <div class="feature-icon">🎯</div>
-            <h3 class="feature-title" style="color: #0ea5e9;">AI-Powered Decision Making</h3>
-            <p class="feature-description">
-                Advanced algorithms analyze your business patterns and make optimal decisions automatically.
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with col2:
-        st.markdown("""
-        <div class="feature-card">
-            <div class="feature-icon">📈</div>
-            <h3 class="feature-title" style="color: #0ea5e9;">Inventory Optimization</h3>
-            <p class="feature-description">
-                Know exactly when to order, how much to order, and in what combinations for maximum efficiency.
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with col3:
-        st.markdown("""
-        <div class="feature-card">
-            <div class="feature-icon">⏰</div>
-            <h3 class="feature-title" style="color: #0ea5e9;">Real-Time Monitoring</h3>
-            <p class="feature-description">
-                Continuous tracking of your business metrics with instant alerts when action is needed.
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
 
     # --- CTA Section ---
     st.markdown("""
