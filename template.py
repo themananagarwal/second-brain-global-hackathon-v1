@@ -313,7 +313,7 @@ def inject_global_css():
          /* Add these lines 👇 */
         position: sticky;
         top: 0;
-        z-index: 1000;
+        z-index: 100;
     }
 
     .nav-brand {
