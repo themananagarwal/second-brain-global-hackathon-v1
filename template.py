@@ -304,31 +304,52 @@ def inject_global_css():
     /* NAVIGATION BAR */
     /* ========================= */
 
-    .nav-container {
-        background: var(--color-white);
-        border-bottom: 0px solid var(--color-border);
-        padding: var(--spacing-sm) 0;
-        margin-bottom: var(--spacing-lg);
-                
-         /* Add these lines 👇 */
-        position: sticky;
-        top: 0;
-        z-index: 100;
-    }
+    /* Make the bar fixed to the viewport */
+.nav-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;            /* full width */
+  z-index: 1000;
 
-    .nav-brand {
-        display: flex;
-        align-items: left;
-        gap: var(--spacing-xs);
-        font-size: 1.5rem;
-        font-weight: 700;
-        color: var(--color-primary-start);
-    }
+  background: var(--color-white);
+  border-bottom: 1px solid var(--color-border);
 
-    .nav-brand-icon {
-        font-size: 1.5rem;
-        color: var(--color-primary-start);
-    }
+  /* move padding to inner content so the bar spans edge-to-edge */
+  padding: 0;
+  height: 64px;        /* pick your height */
+}
+
+/* Optional inner wrapper to keep your old centered layout */
+.nav-inner {
+  max-width: 1200px;   /* whatever your page uses */
+  margin: 0 auto;
+  padding: var(--spacing-sm) var(--spacing-md);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Prevent content being hidden under the fixed bar */
+body {
+  padding-top: 64px;   /* same as .nav-container height */
+}
+
+/* Small cleanup: 'left' isn’t valid for align-items */
+.nav-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-primary-start);
+}
+
+.nav-brand-icon {
+  font-size: 1.5rem;
+  color: var(--color-primary-start);
+}
+
 
     /* ========================= */
     /* HERO SECTION */
