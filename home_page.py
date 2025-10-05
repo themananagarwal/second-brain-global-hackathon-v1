@@ -17,7 +17,7 @@ def render_home_page():
         </div>
         <div class="hero-buttons">
             <a href="#" class="btn btn-primary" style="background: white; color: #0ea5e9;">Get Started Today →</a>
-            <a href="#" class="btn btn-secondary" style="color: white; border-color: white;">Schedule Demo</a>
+            <a href="#" class="btn btn-secondary" style="background: white; color: #0ea5e9;">Schedule Demo</a>
         </div>
         <div style="margin-top: 2rem; display: flex; justify-content: center; gap: 2rem; flex-wrap: wrap;">
             <div class="cta-feature" style="color: rgba(255,255,255,0.8);">
