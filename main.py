@@ -44,7 +44,7 @@ plot_monthly_mix_pct(monthly_mix_pct)
 sku_weights = dict(zip(sales_df['Particular'], sales_df['Weight Per Piece']))
 
 # Run EOQ calculation for the last 90 days
-eoq_results = calculate_rolling_eoq(sales_df, sku_weights, lookback_days=365)
+eoq_results = calculate_rolling_eoq(sales_df, sku_weights, lookback_days=90)
 
 # Create outputs directory if it doesn't exist (FIX)
 Path("outputs").mkdir(parents=True, exist_ok=True)
