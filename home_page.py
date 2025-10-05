@@ -196,7 +196,7 @@ def render_home_page():
     # --- Features Section ---
     st.markdown("""
     <div class="page-header" style="margin-top: 4rem;">
-        <h2 style="color: var(--gray-800); font-size: 2.5rem; font-weight: 700;">
+        <h2 style="color: var(--gray-800); font-size: 2.5rem; font-weight: 700; max-width: 800px; margin: 1rem auto;">
             Intelligent Business <span style="color: #ffffff;">Automation</span>
         </h2>
         <p style="color: var(--gray-600); font-size: 1.1rem; max-width: 800px; margin: 1rem auto;">
