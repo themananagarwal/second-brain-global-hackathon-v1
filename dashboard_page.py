@@ -1198,12 +1198,13 @@ def render_dashboard_page(sales_df, latest_inv, eoq_df, rop_df, mix_pct):
 
             csv = rop_df.to_csv(index=False).encode('utf-8')
             st.download_button(
-                label="📥 Download Reorder Data",
+                label="📥 Download Inventory Data",
                 data=csv,
-                file_name=f"reorder_{datetime.now().strftime('%Y%m%d')}.csv",
+                file_name=f"inventory_{datetime.now().strftime('%Y%m%d')}.csv",
                 mime="text/csv",
-                type="secondary"
+                type="primary"
             )
+
         else:
             st.info("No reorder evaluation data available")
 
