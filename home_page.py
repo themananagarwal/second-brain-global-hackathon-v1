@@ -13,12 +13,12 @@ def render_home_page():
     logo_b64 = base64.b64encode(logo_path.read_bytes()).decode("utf-8")
     demo_b64 = base64.b64encode(demo_path.read_bytes()).decode("utf-8")
 
-    # --- CSS for clean left-aligned hero with transparent background ---
+    # --- CSS for transparent hero container ---
     st.markdown("""
     <style>
-      /* full-width gradient background */
-      .hero-bg {
-        background: linear-gradient(90deg, #0ea5e9 0%, #38bdf8 100%);
+      /* Transparent hero container */
+      .hero-transparent {
+        background: transparent;
         border: none;
         padding: 4rem 2rem 3rem;
         border-radius: 0;
@@ -27,7 +27,6 @@ def render_home_page():
         overflow: hidden;
       }
 
-      /* contain content, align left */
       .hero-container {
         display: flex;
         align-items: center;
@@ -36,12 +35,14 @@ def render_home_page():
         max-width: 1200px;
         margin: 0 auto;
         flex-wrap: wrap;
+        background: transparent;
       }
 
       .hero-left {
         flex: 1 1 50%;
         min-width: 320px;
         text-align: left;
+        background: transparent;
       }
 
       .brand {
@@ -49,12 +50,15 @@ def render_home_page():
         align-items: center;
         gap: .6rem;
         margin-bottom: 1.25rem;
+        background: transparent;
       }
+
       .brand img {
         width: 32px;
         height: 32px;
         filter: brightness(0) invert(1);
       }
+
       .brand .name {
         font-weight: 700;
         color: #fff;
@@ -67,6 +71,7 @@ def render_home_page():
         line-height: 1.05;
         margin-bottom: 1rem;
         text-align: left;
+        background: transparent;
       }
 
       .hero-subtitle {
@@ -74,6 +79,7 @@ def render_home_page():
         color: rgba(255,255,255,.9);
         font-size: 1.1rem;
         max-width: 500px;
+        background: transparent;
       }
 
       .hero-buttons {
@@ -81,6 +87,7 @@ def render_home_page():
         gap: .75rem;
         flex-wrap: wrap;
         margin-bottom: 1.5rem;
+        background: transparent;
       }
 
       .btn {
@@ -94,15 +101,18 @@ def render_home_page():
         border:1px solid transparent;
         transition: 0.2s;
       }
+
       .btn-primary {
         background:#fff;
         color:#0ea5e9;
       }
+
       .btn-secondary {
         background:transparent;
         color:#fff;
         border-color:rgba(255,255,255,.5);
       }
+
       .btn-primary:hover { background:#f0f9ff; }
       .btn-secondary:hover { border-color:#fff; }
 
@@ -112,6 +122,7 @@ def render_home_page():
         flex-wrap:wrap;
         color: rgba(255,255,255,0.9);
         font-size: 0.95rem;
+        background: transparent;
       }
 
       .hero-right {
@@ -119,6 +130,7 @@ def render_home_page():
         min-width: 300px;
         position: relative;
         text-align: right;
+        background: transparent;
       }
 
       .hero-right img {
@@ -127,16 +139,16 @@ def render_home_page():
         box-shadow: 0 12px 40px rgba(0,0,0,0.35);
       }
 
-      /* remove any extra section padding from Streamlit */
+      /* Remove Streamlit’s default background color around markdown blocks */
       section[data-testid="stMarkdownContainer"] {
         background: transparent !important;
       }
     </style>
     """, unsafe_allow_html=True)
 
-    # --- HERO SECTION ---
+    # --- HERO SECTION (transparent container) ---
     st.markdown(f"""
-    <div class="hero-bg">
+    <div class="hero-transparent">
       <div class="hero-container">
         <div class="hero-left">
           <div class="brand">
