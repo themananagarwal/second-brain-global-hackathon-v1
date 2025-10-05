@@ -154,7 +154,7 @@ def render_dashboard_page(sales_df, latest_inv, eoq_df, rop_df, mix_pct):
                         margin=dict(l=20, r=20, t=10, b=20),
                         paper_bgcolor='rgba(255,255,255,0.6)',
                         plot_bgcolor='rgba(255,255,255,0.6)',
-                        font=dict(color='#374151', size=11, family='Arial'),
+                        font=dict(color='#000000', size=11, family='Arial'),
                         showlegend=False,
                         hovermode='x unified'
                     )
@@ -212,7 +212,7 @@ def render_dashboard_page(sales_df, latest_inv, eoq_df, rop_df, mix_pct):
                     margin=dict(l=10, r=10, t=10, b=10),
                     paper_bgcolor='rgba(0,0,0,0)',
                     plot_bgcolor='rgba(255,255,255,0.6)',
-                    font=dict(color='#374151', size=11, family='Arial'),
+                    font=dict(color='#000000', size=11, family='Arial'),
                     showlegend=True,
                     legend=dict(
                         orientation="v",
@@ -282,7 +282,7 @@ def render_dashboard_page(sales_df, latest_inv, eoq_df, rop_df, mix_pct):
                         margin=dict(l=20, r=20, t=10, b=20),
                         paper_bgcolor='rgba(255,255,255,0.6)',
                         plot_bgcolor='rgba(255,255,255,0.6)',
-                        font=dict(color='#374151', size=11, family='Arial'),
+                        font=dict(color='#000000', size=11, family='Arial'),
                         barmode='group',
                         showlegend=True,
                         legend=dict(
@@ -351,7 +351,7 @@ def render_dashboard_page(sales_df, latest_inv, eoq_df, rop_df, mix_pct):
                     margin=dict(l=20, r=20, t=10, b=20),
                     paper_bgcolor='rgba(255,255,255,0.6)',
                     plot_bgcolor='rgba(255,255,255,0.6)',
-                    font=dict(color='#374151', size=11, family='Arial'),
+                    font=dict(color='#000000', size=11, family='Arial'),
                     showlegend=False
                 )
 
@@ -418,7 +418,7 @@ def render_dashboard_page(sales_df, latest_inv, eoq_df, rop_df, mix_pct):
                         margin=dict(l=20, r=20, t=10, b=40),
                         paper_bgcolor='rgba(0,0,0,0)',
                         plot_bgcolor='rgba(0,0,0,0)',
-                        font=dict(color='#374151', size=11, family='Arial'),
+                        font=dict(color='#000000', size=11, family='Arial'),
                         showlegend=True,
                         legend=dict(
                             orientation="h",
@@ -962,7 +962,7 @@ def render_dashboard_page(sales_df, latest_inv, eoq_df, rop_df, mix_pct):
                                                     margin=dict(l=20, r=20, t=20, b=20),
                                                     paper_bgcolor='rgba(0,0,0,0)',
                                                     plot_bgcolor='rgba(0,0,0,0)',
-                                                    font=dict(color='#374151', size=11)
+                                                    font=dict(color='#000000', size=11)
                                                 )
 
                                                 fig.update_xaxes(showgrid=True, gridcolor='rgba(148, 163, 184, 0.15)')
@@ -989,7 +989,7 @@ def render_dashboard_page(sales_df, latest_inv, eoq_df, rop_df, mix_pct):
                                                     margin=dict(l=20, r=20, t=20, b=20),
                                                     paper_bgcolor='rgba(0,0,0,0)',
                                                     plot_bgcolor='rgba(0,0,0,0)',
-                                                    font=dict(color='#374151', size=11)
+                                                    font=dict(color='#000000', size=11)
                                                 )
 
                                                 fig2.update_xaxes(showgrid=False)
