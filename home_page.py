@@ -183,11 +183,6 @@ def render_home_page():
         <span>⚡ Instant Optimization</span>
       </div>
     </div>
-
-    <div class="hero-right">
-      <!-- CHANGED: embed SVG as data URI -->
-      <img src="data:image/svg+xml;base64,{demo_b64}" alt="Dashboard demo" />
-    </div>
   </div>
 </div>
 """
@@ -195,8 +190,8 @@ def render_home_page():
 
     # --- Features Section ---
     st.markdown("""
-    <div class="page-header" style="margin-top: 4rem;">
-        <h2 style="color: var(--gray-800); font-size: 2.5rem; font-weight: 700;">
+    <div class="page-header" style="margin-top: 4rem; text-align: center;">
+        <h2 style="color: var(--gray-800); font-size: 2.5rem; font-weight: 700; margin: 1rem auto;">
             Intelligent Business <span style="color: #ffffff;">Automation</span>
         </h2>
         <p style="color: var(--gray-600); font-size: 1.1rem; max-width: 800px; margin: 1rem auto;">
@@ -247,7 +242,7 @@ def render_home_page():
     <div class="cta-section" style="margin-top: 4rem; text-align: center;">
         <h2 class="cta-title" style="font-size: 2.5rem; color: var(--gray-900); font-weight: 700;">
             Ready to Build Your<br>
-            <span style="color: #0ea5e9;">Second Brain?</span>
+            <span style="color: #ffffff;">Second Brain?</span>
         </h2>
         <p class="cta-subtitle" style="color: #475569; max-width: 700px; margin: 1rem auto;">
             Join forward-thinking businesses that have eliminated manual decision-making. 
