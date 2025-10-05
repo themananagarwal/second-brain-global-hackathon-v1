@@ -564,29 +564,31 @@ def render_dashboard_page(sales_df, latest_inv, eoq_df, rop_df, mix_pct):
 
     st.markdown("</div>", unsafe_allow_html=True)
 
+    # Replace the simulation section in dashboard_page.py with this improved version
+
     # Enhanced Simulation Section
     st.markdown("<div style='margin: 48px 0 24px 0;'>", unsafe_allow_html=True)
     st.markdown("""
-    <div style="background: linear-gradient(135deg, #00BFFF 0%, #0099E5 100%); border-radius: 8px; padding: 32px; margin-bottom: 24px;">
-        <h2 style='font-size: 1.75rem; font-weight: 700; color: #FFFFFF; margin-bottom: 12px;'>
-            🔮 Advanced Inventory Simulation
-        </h2>
-        <p style='font-size: 1.125rem; color: rgba(255, 255, 255, 0.95); margin-bottom: 0;'>
-            Simulate future inventory scenarios based on demand patterns, ordering policies, and service level targets.
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
-
-    with st.expander("⚙️ **Configure & Run Simulation**", expanded=False):
-        st.markdown("""
-        <div style="background: #F8F9FA; border-radius: 6px; padding: 16px; margin-bottom: 20px;">
-            <p style="color: #2C3E50; font-size: 0.95rem; margin: 0;">
-                <strong>📝 Simulation Overview:</strong> This advanced simulation runs a day-by-day inventory model 
-                that processes actual sales data, triggers reorders based on ROP, batches orders into 10-12 ton 
-                shipments, tracks backorders, and calculates fill rates. Results include daily summaries and final inventory states.
+        <div style="background: linear-gradient(135deg, #00BFFF 0%, #0099E5 100%); border-radius: 8px; padding: 32px; margin-bottom: 24px;">
+            <h2 style='font-size: 1.75rem; font-weight: 700; color: #FFFFFF; margin-bottom: 12px;'>
+                🔮 Advanced Inventory Simulation
+            </h2>
+            <p style='font-size: 1.125rem; color: rgba(255, 255, 255, 0.95); margin-bottom: 0;'>
+                Simulate future inventory scenarios based on demand patterns, ordering policies, and service level targets.
             </p>
         </div>
         """, unsafe_allow_html=True)
+
+    with st.expander("⚙️ **Configure & Run Simulation**", expanded=False):
+        st.markdown("""
+            <div style="background: #F8F9FA; border-radius: 6px; padding: 16px; margin-bottom: 20px;">
+                <p style="color: #2C3E50; font-size: 0.95rem; margin: 0;">
+                    <strong>📝 Simulation Overview:</strong> This advanced simulation runs a day-by-day inventory model 
+                    that processes actual sales data, triggers reorders based on ROP, batches orders into 10-12 ton 
+                    shipments, tracks backorders, and calculates fill rates. Results include daily summaries and final inventory states.
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
 
         col1, col2, col3 = st.columns(3)
 
@@ -682,105 +684,200 @@ def render_dashboard_page(sales_df, latest_inv, eoq_df, rop_df, mix_pct):
                             if output:
                                 st.success("✅ **Simulation completed successfully!**")
 
-                                # Display output in styled container
-                                st.markdown("""
-                                <div style="background: #2C3E50; border-radius: 6px; padding: 16px; margin: 16px 0;">
-                                    <h4 style="color: #FFFFFF; margin: 0 0 12px 0;">📊 Simulation Console Output</h4>
-                                </div>
-                                """, unsafe_allow_html=True)
+                                # Initialize tabs list
+                                tab_names = []
 
-                                st.code(output, language="text")
+                                # Check what results are available
+                                has_daily_summary = os.path.exists("data/sim_daily_summary.csv")
+                                has_final_inventory = os.path.exists("data/sim_final_inventory.csv")
 
-                                # Check for output files
-                                if os.path.exists("data/sim_daily_summary.csv"):
-                                    st.markdown("---")
-                                    st.markdown("### 📈 Simulation Results")
+                                # Build tab list based on available results
+                                if has_daily_summary:
+                                    tab_names.extend(["📊 Performance Charts", "📋 Daily Summary"])
+                                if has_final_inventory:
+                                    tab_names.append("📦 Final Inventory")
 
-                                    daily_summary = pd.read_csv("data/sim_daily_summary.csv")
+                                # Always include console logs tab
+                                tab_names.append("🖥️ Console Logs")
 
-                                    # Create tabs for different views
-                                    tab1, tab2 = st.tabs(["📊 Performance Charts", "📋 Detailed Data"])
+                                # Create tabs
+                                if len(tab_names) > 1:
+                                    tabs = st.tabs(tab_names)
+                                    tab_index = 0
 
-                                    with tab1:
-                                        # Fill Rate Chart
-                                        if 'cum_fill_rate_pct' in daily_summary.columns:
-                                            fig = go.Figure()
-                                            fig.add_trace(go.Scatter(
-                                                x=daily_summary.index,
-                                                y=daily_summary['cum_fill_rate_pct'],
-                                                mode='lines',
-                                                name='Cumulative Fill Rate',
-                                                line=dict(color='#28A745', width=3),
-                                                fill='tozeroy',
-                                                fillcolor='rgba(40, 167, 69, 0.1)'
-                                            ))
+                                    # Performance Charts Tab
+                                    if has_daily_summary:
+                                        with tabs[tab_index]:
+                                            daily_summary = pd.read_csv("data/sim_daily_summary.csv")
 
-                                            fig.update_layout(
-                                                title="Cumulative Fill Rate Over Time",
-                                                height=300,
-                                                margin=dict(l=20, r=20, t=40, b=20),
-                                                paper_bgcolor='rgba(0,0,0,0)',
-                                                plot_bgcolor='rgba(0,0,0,0)',
-                                                font=dict(color='#374151', size=11)
+                                            # Fill Rate Chart
+                                            if 'cum_fill_rate_pct' in daily_summary.columns:
+                                                fig = go.Figure()
+                                                fig.add_trace(go.Scatter(
+                                                    x=daily_summary.index,
+                                                    y=daily_summary['cum_fill_rate_pct'],
+                                                    mode='lines',
+                                                    name='Cumulative Fill Rate',
+                                                    line=dict(color='#28A745', width=3),
+                                                    fill='tozeroy',
+                                                    fillcolor='rgba(40, 167, 69, 0.1)'
+                                                ))
+
+                                                fig.update_layout(
+                                                    title="Cumulative Fill Rate Over Time",
+                                                    height=300,
+                                                    margin=dict(l=20, r=20, t=40, b=20),
+                                                    paper_bgcolor='rgba(0,0,0,0)',
+                                                    plot_bgcolor='rgba(0,0,0,0)',
+                                                    font=dict(color='#374151', size=11)
+                                                )
+
+                                                fig.update_xaxes(showgrid=True, gridcolor='rgba(148, 163, 184, 0.15)')
+                                                fig.update_yaxes(showgrid=True, gridcolor='rgba(148, 163, 184, 0.15)',
+                                                                 title='Fill Rate (%)', range=[0, 100])
+
+                                                st.plotly_chart(fig, use_container_width=True)
+
+                                            # Backorder Chart
+                                            if 'open_backorders_units' in daily_summary.columns:
+                                                fig2 = go.Figure()
+                                                fig2.add_trace(go.Bar(
+                                                    x=daily_summary.index,
+                                                    y=daily_summary['open_backorders_units'],
+                                                    name='Open Backorders',
+                                                    marker_color='#DC3545'
+                                                ))
+
+                                                fig2.update_layout(
+                                                    title="Daily Open Backorders",
+                                                    height=300,
+                                                    margin=dict(l=20, r=20, t=40, b=20),
+                                                    paper_bgcolor='rgba(0,0,0,0)',
+                                                    plot_bgcolor='rgba(0,0,0,0)',
+                                                    font=dict(color='#374151', size=11)
+                                                )
+
+                                                fig2.update_xaxes(showgrid=False)
+                                                fig2.update_yaxes(showgrid=True, gridcolor='rgba(148, 163, 184, 0.15)',
+                                                                  title='Units')
+
+                                                st.plotly_chart(fig2, use_container_width=True)
+
+                                        tab_index += 1
+
+                                    # Daily Summary Tab
+                                    if has_daily_summary:
+                                        with tabs[tab_index]:
+                                            daily_summary = pd.read_csv("data/sim_daily_summary.csv")
+
+                                            st.markdown("### 📈 Detailed Daily Summary")
+                                            st.dataframe(
+                                                daily_summary,
+                                                use_container_width=True,
+                                                height=400
                                             )
 
-                                            fig.update_xaxes(showgrid=True, gridcolor='rgba(148, 163, 184, 0.15)')
-                                            fig.update_yaxes(showgrid=True, gridcolor='rgba(148, 163, 184, 0.15)',
-                                                             title='Fill Rate (%)', range=[0, 100])
-
-                                            st.plotly_chart(fig, use_container_width=True)
-
-                                        # Backorder Chart
-                                        if 'open_backorders_units' in daily_summary.columns:
-                                            fig2 = go.Figure()
-                                            fig2.add_trace(go.Bar(
-                                                x=daily_summary.index,
-                                                y=daily_summary['open_backorders_units'],
-                                                name='Open Backorders',
-                                                marker_color='#DC3545'
-                                            ))
-
-                                            fig2.update_layout(
-                                                title="Daily Open Backorders",
-                                                height=300,
-                                                margin=dict(l=20, r=20, t=40, b=20),
-                                                paper_bgcolor='rgba(0,0,0,0)',
-                                                plot_bgcolor='rgba(0,0,0,0)',
-                                                font=dict(color='#374151', size=11)
+                                            csv = daily_summary.to_csv(index=False).encode('utf-8')
+                                            st.download_button(
+                                                label="📥 Download Daily Summary",
+                                                data=csv,
+                                                file_name=f"sim_daily_summary_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                                                mime="text/csv",
+                                                type="secondary"
                                             )
 
-                                            fig2.update_xaxes(showgrid=False)
-                                            fig2.update_yaxes(showgrid=True, gridcolor='rgba(148, 163, 184, 0.15)',
-                                                              title='Units')
+                                        tab_index += 1
 
-                                            st.plotly_chart(fig2, use_container_width=True)
+                                    # Final Inventory Tab
+                                    if has_final_inventory:
+                                        with tabs[tab_index]:
+                                            final_inv = pd.read_csv("data/sim_final_inventory.csv")
 
-                                    with tab2:
-                                        st.dataframe(
-                                            daily_summary,
-                                            use_container_width=True,
-                                            height=400
-                                        )
+                                            st.markdown("### 📦 Final Inventory State")
+                                            st.dataframe(
+                                                final_inv,
+                                                use_container_width=True,
+                                                height=400
+                                            )
 
-                                        csv = daily_summary.to_csv(index=False).encode('utf-8')
+                                            csv_final = final_inv.to_csv(index=False).encode('utf-8')
+                                            st.download_button(
+                                                label="📥 Download Final Inventory",
+                                                data=csv_final,
+                                                file_name=f"sim_final_inventory_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                                                mime="text/csv",
+                                                type="secondary"
+                                            )
+
+                                        tab_index += 1
+
+                                    # Console Logs Tab
+                                    with tabs[tab_index]:
+                                        st.markdown("### 🖥️ Simulation Console Output")
+                                        st.markdown("""
+                                            <div style="background: #2C3E50; border-radius: 6px; padding: 16px; margin: 16px 0;">
+                                                <h4 style="color: #FFFFFF; margin: 0 0 12px 0;">📊 Console Logs</h4>
+                                            </div>
+                                            """, unsafe_allow_html=True)
+
+                                        st.code(output, language="text", line_numbers=True)
+
+                                        # Download console output
                                         st.download_button(
-                                            label="📥 Download Simulation Results",
-                                            data=csv,
-                                            file_name=f"simulation_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                                            mime="text/csv",
+                                            label="📥 Download Console Logs",
+                                            data=output.encode('utf-8'),
+                                            file_name=f"sim_console_output_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
+                                            mime="text/plain",
                                             type="secondary"
                                         )
+                                else:
+                                    # If only console logs, show them directly
+                                    st.markdown("### 🖥️ Simulation Console Output")
+                                    st.code(output, language="text", line_numbers=True)
 
-                                # Check for final inventory
-                                if os.path.exists("data/sim_final_inventory.csv"):
-                                    final_inv = pd.read_csv("data/sim_final_inventory.csv")
+                                # Summary metrics if available
+                                if has_daily_summary:
+                                    daily_summary = pd.read_csv("data/sim_daily_summary.csv")
 
-                                    st.markdown("### 📦 Final Inventory State")
-                                    st.dataframe(
-                                        final_inv,
-                                        use_container_width=True,
-                                        height=300
-                                    )
+                                    st.markdown("---")
+                                    st.markdown("### 📊 Simulation Summary")
+
+                                    col1, col2, col3, col4 = st.columns(4)
+
+                                    with col1:
+                                        if 'cum_fill_rate_pct' in daily_summary.columns:
+                                            final_fill_rate = daily_summary['cum_fill_rate_pct'].iloc[-1]
+                                            st.metric(
+                                                label="Final Fill Rate",
+                                                value=f"{final_fill_rate:.1f}%",
+                                                delta=None
+                                            )
+
+                                    with col2:
+                                        if 'open_backorders_units' in daily_summary.columns:
+                                            total_backorders = daily_summary['open_backorders_units'].sum()
+                                            st.metric(
+                                                label="Total Backorders",
+                                                value=f"{total_backorders:,.0f}",
+                                                delta=None
+                                            )
+
+                                    with col3:
+                                        simulation_days = len(daily_summary)
+                                        st.metric(
+                                            label="Simulation Days",
+                                            value=f"{simulation_days}",
+                                            delta=None
+                                        )
+
+                                    with col4:
+                                        if 'orders_placed' in daily_summary.columns:
+                                            total_orders = daily_summary['orders_placed'].sum()
+                                            st.metric(
+                                                label="Orders Placed",
+                                                value=f"{total_orders:,.0f}",
+                                                delta=None
+                                            )
                             else:
                                 st.warning("⚠️ Simulation completed but produced no output. Check data files.")
 
