@@ -14,7 +14,12 @@ def render_home_page():
     demo_b64 = base64.b64encode(demo_path.read_bytes()).decode("utf-8")
 
     # --- CSS (transparent container, image right, text left) ---
+    
     st.markdown("""
+    /* or a gradient background site-wide */
+    html, body, .stApp { 
+        background: linear-gradient(180deg, #0b1020 0%, #0f172a 100%);
+    }
     <style>
       .hero-transparent {
         background: transparent;
