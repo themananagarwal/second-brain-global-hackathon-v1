@@ -45,7 +45,7 @@ def inject_global_css():
 
         /* Neutral Colors */
         --color-white: #FFFFFF;
-        --color-background: #F8F9FA;
+        --color-background: transparent;
         --color-text-primary: #2C3E50;
         --color-text-light: #6C757D;
         --color-border: #E5E7EB;
