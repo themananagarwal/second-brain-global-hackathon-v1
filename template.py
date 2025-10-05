@@ -148,6 +148,7 @@ def inject_global_css():
 
     .stButton > button[kind="primary"]:hover,
     .stButton > button[data-baseweb="button"][kind="primary"]:hover {
+        color: var(--color-white) !important;
         filter: brightness(1.1) !important;
         transform: translateY(-1px) !important;
         box-shadow: 0px 4px 12px rgba(0, 191, 255, 0.3) !important;
