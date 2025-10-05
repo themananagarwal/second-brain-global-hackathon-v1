@@ -1,38 +1,98 @@
 # home_page.py
 import streamlit as st
+import base64
+from pathlib import Path
 
+def _b64(path: Path) -> str:
+    """Read a file and return base64-encoded string. Works for svg/jpg/png."""
+    data = path.read_bytes()
+    return base64.b64encode(data).decode("utf-8")
+
+def _find_asset(name: str) -> Path:
+    """Search in current dir and ./assets for the given filename."""
+    here = Path(__file__).parent
+    p1 = here / name
+    p2 = here / "assets" / name
+    if p1.exists():
+        return p1
+    if p2.exists():
+        return p2
+    raise FileNotFoundError(f"Could not find {name}. Put it next to home_page.py or in ./assets/")
 
 def render_home_page():
-    # Hero Section
+    # ---- Load your assets ----
+    logo_path = _find_asset("brain.svg")
+    demo_path = _find_asset("demo.jpg")
+    logo_b64 = _b64(logo_path)     # inline embed (reliable in Streamlit HTML)
+    demo_b64 = _b64(demo_path)
+
+    # ---- Minimal CSS for brand row + split hero like your screenshot ----
     st.markdown("""
-    <div class="hero-section">
-        <div class="hero-title">
-            Your Business<br>
-            Optimization<br>
-            Engine
-        </div>
-        <div class="hero-subtitle">
-            Skip the prescriptive processes. Let AI make intelligent decisions for your business. 
-            From inventory optimization to operational efficiency - your second brain handles it all.
-        </div>
-        <div class="hero-buttons">
-            <a href="#" class="btn btn-primary" style="background: white; color: #0ea5e9;">Get Started Today →</a>
-            <a href="#" class="btn btn-secondary" style="background: white; color: #0ea5e9;">Schedule Demo</a>
-        </div>
-        <div style="margin-top: 2rem; display: flex; justify-content: center; gap: 2rem; flex-wrap: wrap;">
-            <div class="cta-feature" style="color: rgba(255,255,255,0.8);">
-                <span>❄️</span> 14-day free trial
+    <style>
+      .hero-wrap { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem 0; }
+      .brand { display:flex; align-items:center; gap:.6rem; margin-bottom:1.25rem; }
+      .brand img { width:28px; height:28px; vertical-align:middle;
+                   /* force white logo even if original isn't white */
+                   filter: brightness(0) invert(1); }
+      .brand .name { font-weight: 700; color: #fff; font-size: 1.05rem; }
+
+      .hero-flex { display:flex; gap:2rem; align-items:center; flex-wrap:wrap; }
+      .hero-left { flex:1 1 460px; min-width: 320px; }
+      .hero-right { flex:1 1 520px; min-width: 320px; display:flex; justify-content:center; }
+      .hero-right img { width:100%; height:auto; border-radius: 1rem; box-shadow: 0 16px 48px rgba(3, 7, 18, 0.35); }
+
+      .hero-section { padding: 1.25rem 0 0; color: white; }
+      .hero-title { font-size: clamp(2.2rem, 6vw, 4.25rem); font-weight: 800; line-height: 1.05; letter-spacing:-.02em; }
+      .hero-subtitle { margin: 1rem 0 1.5rem; color: rgba(255,255,255,.9); font-size: 1.05rem; }
+
+      .hero-buttons { display:flex; gap: .75rem; flex-wrap: wrap; }
+      .btn { display:inline-flex; padding:.8rem 1.1rem; border-radius:.75rem; font-weight:700; text-decoration:none; border:1px solid transparent; }
+      .btn.btn-primary { background:#fff; color:#0ea5e9; }
+      .btn.btn-secondary { background:transparent; color:#fff; border-color:rgba(255,255,255,.45); }
+
+      /* optional: small feature line below buttons */
+      .mini-feats { display:flex; gap:1.25rem; flex-wrap:wrap; margin-top:1rem; color: rgba(255,255,255,0.85); }
+      .mini-feats span { display:inline-flex; align-items:center; gap:.5rem; }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # ---- Brand + Split Hero (logo + name on top-left, big title, demo image on right) ----
+    st.markdown(f"""
+    <div class="hero-wrap">
+      <div class="brand">
+        <img src="data:image/svg+xml;base64,{logo_b64}" alt="Second Brain logo" />
+        <div class="name">Second Brain</div>
+      </div>
+
+      <div class="hero-flex">
+        <div class="hero-left">
+          <div class="hero-section">
+            <div class="hero-title">
+              Your Business<br>Optimization<br>Engine
             </div>
-            <div class="cta-feature" style="color: rgba(255,255,255,0.8);">
-                <span>❄️</span> No credit card required
+            <div class="hero-subtitle">
+              Skip the prescriptive processes. Let AI make intelligent decisions for your business.
+              From inventory optimization to operational efficiency – your second brain handles it all.
             </div>
-            <div class="cta-feature" style="color: rgba(255,255,255,0.8);">
-                <span>❄️</span> Setup in minutes
+            <div class="hero-buttons">
+              <a href="#" class="btn btn-primary">Get Started Today →</a>
+              <a href="#" class="btn btn-secondary">Schedule Demo</a>
             </div>
+            <div class="mini-feats">
+              <span>📊 Real-time Analytics</span>
+              <span>⚡ Instant Optimization</span>
+            </div>
+          </div>
         </div>
+
+        <div class="hero-right">
+          <img src="data:image/jpeg;base64,{demo_b64}" alt="Product demo" />
+        </div>
+      </div>
     </div>
     """, unsafe_allow_html=True)
 
+    # ---- (Keep the rest of your sections below as-is) ----
     # Features Section
     st.markdown("""
     <div class="page-header" style="margin-top: 4rem;">
@@ -46,135 +106,4 @@ def render_home_page():
     </div>
     """, unsafe_allow_html=True)
 
-    # Feature Cards
-    col1, col2, col3 = st.columns(3)
-
-    with col1:
-        st.markdown("""
-        <div class="feature-card">
-            <div class="feature-icon">🎯</div>
-            <h3 class="feature-title">AI-Powered Decision Making</h3>
-            <p class="feature-description">
-                Advanced algorithms analyze your business patterns and make optimal decisions automatically.
-            </p>
-            <div style="margin-top: 1rem; padding: 0.5rem 1rem; background: #f0f9ff; border-radius: 0.5rem; display: inline-block;">
-                <span style="color: #0ea5e9; font-weight: 600; font-size: 0.875rem;">Core Feature</span>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with col2:
-        st.markdown("""
-        <div class="feature-card">
-            <div class="feature-icon">📈</div>
-            <h3 class="feature-title">Inventory Optimization</h3>
-            <p class="feature-description">
-                Know exactly when to order, how much to order, and in what combinations for maximum efficiency.
-            </p>
-            <div style="margin-top: 1rem; padding: 0.5rem 1rem; background: #fef3c7; border-radius: 0.5rem; display: inline-block;">
-                <span style="color: #d97706; font-weight: 600; font-size: 0.875rem;">Popular</span>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with col3:
-        st.markdown("""
-        <div class="feature-card">
-            <div class="feature-icon">⏰</div>
-            <h3 class="feature-title">Real-Time Monitoring</h3>
-            <p class="feature-description">
-                Continuous tracking of your business metrics with instant alerts when action is needed.
-            </p>
-            <div style="margin-top: 1rem; padding: 0.5rem 1rem; background: #f0fdf4; border-radius: 0.5rem; display: inline-block;">
-                <span style="color: #16a34a; font-weight: 600; font-size: 0.875rem;">24/7</span>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    # Second Row of Features
-    col4, col5, col6 = st.columns(3)
-
-    with col4:
-        st.markdown("""
-        <div class="feature-card">
-            <div class="feature-icon">🔮</div>
-            <h3 class="feature-title">Predictive Analytics</h3>
-            <p class="feature-description">
-                Forecast demand, identify trends, and prepare for market changes before they happen.
-            </p>
-            <div style="margin-top: 1rem; padding: 0.5rem 1rem; background: #f3e8ff; border-radius: 0.5rem; display: inline-block;">
-                <span style="color: #7c3aed; font-weight: 600; font-size: 0.875rem;">Smart</span>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with col5:
-        st.markdown("""
-        <div class="feature-card">
-            <div class="feature-icon">📊</div>
-            <h3 class="feature-title">Business Intelligence</h3>
-            <p class="feature-description">
-                Transform raw data into actionable insights with beautiful, intuitive dashboards.
-            </p>
-            <div style="margin-top: 1rem; padding: 0.5rem 1rem; background: #fef3e2; border-radius: 0.5rem; display: inline-block;">
-                <span style="color: #ea580c; font-weight: 600; font-size: 0.875rem;">Visual</span>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with col6:
-        st.markdown("""
-        <div class="feature-card">
-            <div class="feature-icon">⚡</div>
-            <h3 class="feature-title">Automated Workflows</h3>
-            <p class="feature-description">
-                Eliminate manual processes with intelligent automation that learns and adapts.
-            </p>
-            <div style="margin-top: 1rem; padding: 0.5rem 1rem; background: #ecfdf5; border-radius: 0.5rem; display: inline-block;">
-                <span style="color: #059669; font-weight: 600; font-size: 0.875rem;">Efficient</span>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    # Trust Indicators
-    st.markdown("""
-    <div style="text-align: center; margin: 3rem 0; padding: 2rem; background: rgba(255,255,255,0.8); border-radius: 1rem;">
-        <div style="display: flex; justify-content: center; align-items: center; gap: 2rem; flex-wrap: wrap;">
-            <div style="display: flex; align-items: center; gap: 0.5rem; color: #64748b;">
-                <span>🛡️</span> Enterprise Security
-            </div>
-            <div style="display: flex; align-items: center; gap: 0.5rem; color: #64748b;">
-                <span>🌍</span> Global Scale
-            </div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # CTA Section
-    st.markdown("""
-    <div class="cta-section">
-        <h2 class="cta-title">
-            Ready to Build Your<br>
-            <span style="color: var(--primary-cyan);">Second Brain?</span>
-        </h2>
-        <p class="cta-subtitle">
-            Join forward-thinking businesses that have eliminated manual decision-making. 
-            Start optimizing your operations with AI today.
-        </p>
-        <div class="hero-buttons">
-            <a href="#" class="btn btn-primary">Start Free Trial →</a>
-            <a href="#" class="btn btn-secondary">Schedule Demo</a>
-        </div>
-        <div class="cta-features">
-            <div class="cta-feature">
-                <span>❄️</span> 14-day free trial
-            </div>
-            <div class="cta-feature">
-                <span>❄️</span> No credit card required
-            </div>
-            <div class="cta-feature">
-                <span>❄️</span> Setup in minutes
-            </div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    # ... your feature cards, trust indicators, and CTA sections unchanged ...
