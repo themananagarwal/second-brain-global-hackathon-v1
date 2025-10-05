@@ -130,23 +130,30 @@ else:
     else:
         mix_pct = pd.DataFrame()
 
-# ---------- Simulation integration ----------
+# --- replace the loader in app.py with this ---
 def _load_simulation_module():
-    # Try import from project root
+    # 1) Preferred: Modules.simulation
+    try:
+        from Modules import simulation  # type: ignore
+        return simulation
+    except Exception:
+        pass
+    # 2) Fallback: simulation.py at project root
     try:
         import simulation  # type: ignore
         return simulation
     except Exception:
         pass
-    # Try data/simulation.py
-    sim_path = os.path.join("data", "simulation.py")
+    # 3) Fallback by explicit path (rarely needed)
+    sim_path = os.path.join("Modules", "simulation.py")
     if os.path.exists(sim_path):
+        import importlib.util
         spec = importlib.util.spec_from_file_location("simulation", sim_path)
         mod = importlib.util.module_from_spec(spec)
         assert spec and spec.loader
         spec.loader.exec_module(mod)  # type: ignore
         return mod
-    raise ImportError("simulation.py not found in project root or ./data")
+    raise ImportError("simulation.py not found in Modules/ or project root")
 
 # ---------- Tabs ----------
 home_tab, dash_tab = st.tabs(["Home", "Dashboard"])
