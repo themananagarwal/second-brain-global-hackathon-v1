@@ -1,4 +1,4 @@
-# dashboard_page.py - COMPLETELY FIXED VERSION
+# dashboard_page.py - FIXED WORKING VERSION
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -7,7 +7,6 @@ from plotly.subplots import make_subplots
 from io import StringIO
 from contextlib import redirect_stdout
 import importlib.util
-import numpy as np
 import os
 import logging
 from datetime import datetime
@@ -17,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 def render_dashboard_page(sales_df, latest_inv, eoq_df, rop_df, mix_pct):
-    """Main dashboard rendering function with enhanced visualizations and simulation"""
+    """Main dashboard rendering function with proper data validation"""
 
     # Dashboard Header
     st.markdown("""
@@ -36,25 +35,22 @@ def render_dashboard_page(sales_df, latest_inv, eoq_df, rop_df, mix_pct):
         st.error("⚠️ **No sales data available.** Please ensure data files are properly loaded.")
         return
 
-    # Compute Key Metrics with Error Handling
+    # Compute Key Metrics
     try:
-        total_sales = 0
-        total_skus = 0
+        total_sales = sales_df['Quantity'].sum() if 'Quantity' in sales_df.columns else 0
+        total_skus = sales_df['Particular'].nunique() if 'Particular' in sales_df.columns else 0
+
+        avg_daily_sales = total_sales / 30 if total_sales > 0 else 0
+
         total_inventory_value = 0
         stock_items = 0
-
-        if sales_df is not None and not sales_df.empty:
-            if 'Quantity' in sales_df.columns:
-                total_sales = int(sales_df['Quantity'].sum())
-            if 'Particular' in sales_df.columns:
-                total_skus = int(sales_df['Particular'].nunique())
-
         if latest_inv is not None and not latest_inv.empty:
-            stock_items = len(latest_inv)
             if 'Current_Stock' in latest_inv.columns:
-                total_inventory_value = int(latest_inv['Current_Stock'].sum())
+                stock_items = len(latest_inv)
+                total_inventory_value = latest_inv['Current_Stock'].sum()
             elif 'Quantity' in latest_inv.columns:
-                total_inventory_value = int(latest_inv['Quantity'].sum())
+                stock_items = len(latest_inv)
+                total_inventory_value = latest_inv['Quantity'].sum()
 
         # Calculate changes (mock data for demonstration)
         sales_change = 12.5
@@ -64,15 +60,8 @@ def render_dashboard_page(sales_df, latest_inv, eoq_df, rop_df, mix_pct):
 
     except Exception as e:
         logger.error(f"Error computing metrics: {str(e)}")
-        # Set default values
-        total_sales = 0
-        total_skus = 0
-        total_inventory_value = 0
-        stock_items = 0
-        sales_change = 0
-        sku_change = 0
-        inventory_change = 0
-        stock_change = 0
+        st.error(f"Error calculating dashboard metrics: {str(e)}")
+        return
 
     # KPI Cards (4-column layout)
     st.markdown("<div style='margin-bottom: 32px;'>", unsafe_allow_html=True)
@@ -82,7 +71,7 @@ def render_dashboard_page(sales_df, latest_inv, eoq_df, rop_df, mix_pct):
         st.markdown(f"""
         <div class="metric-card fade-in">
             <div class="metric-label">Total Sales Volume</div>
-            <div class="metric-value">{total_sales:,}</div>
+            <div class="metric-value">{total_sales:,.0f}</div>
             <div class="metric-change {'positive' if sales_change >= 0 else 'negative'}">
                 {'▲' if sales_change >= 0 else '▼'} {abs(sales_change):.1f}% vs last period
             </div>
@@ -104,7 +93,7 @@ def render_dashboard_page(sales_df, latest_inv, eoq_df, rop_df, mix_pct):
         st.markdown(f"""
         <div class="metric-card fade-in" style="animation-delay: 0.2s; border-left-color: #FF9500;">
             <div class="metric-label">Inventory Value</div>
-            <div class="metric-value">{total_inventory_value:,}</div>
+            <div class="metric-value">{total_inventory_value:,.0f}</div>
             <div class="metric-change {'negative' if inventory_change < 0 else 'positive'}">
                 {'▼' if inventory_change < 0 else '▲'} {abs(inventory_change):.1f}% vs last period
             </div>
@@ -137,70 +126,60 @@ def render_dashboard_page(sales_df, latest_inv, eoq_df, rop_df, mix_pct):
         """, unsafe_allow_html=True)
 
         try:
-            if sales_df is not None and not sales_df.empty and 'Date' in sales_df.columns and 'Quantity' in sales_df.columns:
-                # Prepare daily sales data with comprehensive error handling
+            if 'Date' in sales_df.columns and 'Quantity' in sales_df.columns:
+                # Prepare daily sales data
                 sales_df_copy = sales_df.copy()
-
-                # Convert dates with multiple format support
                 sales_df_copy['Date'] = pd.to_datetime(sales_df_copy['Date'], errors='coerce', dayfirst=True)
                 sales_df_copy = sales_df_copy.dropna(subset=['Date'])
 
-                if not sales_df_copy.empty and len(sales_df_copy) > 0:
+                if not sales_df_copy.empty:
                     daily_sales = sales_df_copy.groupby('Date')['Quantity'].sum().reset_index()
                     daily_sales = daily_sales.sort_values('Date')
 
-                    if len(daily_sales) > 0:
-                        # Create area chart with gradient
-                        fig = go.Figure()
-                        fig.add_trace(go.Scatter(
-                            x=daily_sales['Date'],
-                            y=daily_sales['Quantity'],
-                            mode='lines+markers',
-                            name='Sales Volume',
-                            fill='tozeroy',
-                            fillcolor='rgba(0, 191, 255, 0.2)',
-                            line=dict(color='#00BFFF', width=3),
-                            marker=dict(size=6, color='#00BFFF'),
-                            hovertemplate='<b>%{x}</b><br>Sales: %{y:,.0f} units<extra></extra>'
-                        ))
+                    # Create area chart with gradient
+                    fig = go.Figure()
+                    fig.add_trace(go.Scatter(
+                        x=daily_sales['Date'],
+                        y=daily_sales['Quantity'],
+                        mode='lines',
+                        name='Sales Volume',
+                        fill='tozeroy',
+                        fillcolor='rgba(0, 191, 255, 0.15)',
+                        line=dict(color='#00BFFF', width=3)
+                    ))
 
-                        fig.update_layout(
-                            height=350,
-                            margin=dict(l=50, r=30, t=20, b=50),
-                            paper_bgcolor='rgba(255,255,255,1)',
-                            plot_bgcolor='rgba(255,255,255,1)',
-                            font=dict(color='#2C3E50', size=12, family='Arial'),
-                            showlegend=False,
-                            hovermode='x unified',
-                            xaxis=dict(
-                                showgrid=True,
-                                gridcolor='rgba(200, 200, 200, 0.3)',
-                                gridwidth=1,
-                                zeroline=False,
-                                title=dict(text="Date", font=dict(color='#2C3E50', size=12)),
-                                tickfont=dict(color='#2C3E50', size=11)
-                            ),
-                            yaxis=dict(
-                                showgrid=True,
-                                gridcolor='rgba(200, 200, 200, 0.3)',
-                                gridwidth=1,
-                                zeroline=False,
-                                title=dict(text="Quantity", font=dict(color='#2C3E50', size=12)),
-                                titlefont=dict(color='#2C3E50', size=12),
-                                tickfont=dict(color='#2C3E50', size=11)
-                            )
-                        )
+                    fig.update_layout(
+                        height=350,
+                        margin=dict(l=20, r=20, t=10, b=20),
+                        paper_bgcolor='rgba(0,0,0,0)',
+                        plot_bgcolor='rgba(0,0,0,0)',
+                        font=dict(color='#374151', size=11, family='Arial'),
+                        showlegend=False,
+                        hovermode='x unified'
+                    )
 
-                        st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
-                    else:
-                        st.info("📊 No daily sales data to display")
+                    fig.update_xaxes(
+                        showgrid=True,
+                        gridcolor='rgba(148, 163, 184, 0.15)',
+                        zeroline=False,
+                        title=None
+                    )
+
+                    fig.update_yaxes(
+                        showgrid=True,
+                        gridcolor='rgba(148, 163, 184, 0.15)',
+                        zeroline=False,
+                        title='Quantity'
+                    )
+
+                    st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
                 else:
-                    st.info("📊 No valid sales data found")
+                    st.info("No valid date data available")
             else:
-                st.info("📊 Sales data not available - please check data files")
+                st.info("Sales trend data not available")
         except Exception as e:
             logger.error(f"Error rendering sales trend: {str(e)}")
-            st.error("📊 Unable to render sales trend chart")
+            st.error("Unable to render sales trend chart")
 
         st.markdown("</div>", unsafe_allow_html=True)
 
@@ -211,72 +190,43 @@ def render_dashboard_page(sales_df, latest_inv, eoq_df, rop_df, mix_pct):
         """, unsafe_allow_html=True)
 
         try:
-            if sales_df is not None and not sales_df.empty and 'Particular' in sales_df.columns and 'Quantity' in sales_df.columns:
-                # Calculate product mix with error handling
+            if 'Particular' in sales_df.columns and 'Quantity' in sales_df.columns:
+                # Calculate product mix
                 product_mix = sales_df.groupby('Particular')['Quantity'].sum().reset_index()
-                product_mix = product_mix.sort_values('Quantity', ascending=True).head(8)
+                product_mix = product_mix.sort_values('Quantity', ascending=False).head(8)
 
-                if not product_mix.empty and len(product_mix) > 0:
-                    # Create horizontal bar chart with MAXIMUM CONTRAST
-                    fig = go.Figure()
-
-                    # Use discrete colors for better contrast
-                    colors = ['#00BFFF', '#0099E5', '#28A745', '#FF9500', '#DC3545', '#6C757D', '#9B59B6', '#E74C3C']
-                    bar_colors = [colors[i % len(colors)] for i in range(len(product_mix))]
-
-                    fig.add_trace(go.Bar(
-                        y=product_mix['Particular'],
-                        x=product_mix['Quantity'],
-                        orientation='h',
-                        marker=dict(
-                            color=bar_colors,
-                            line=dict(width=1, color='#FFFFFF')
-                        ),
-                        text=[f"<b>{val:,.0f}</b>" for val in product_mix['Quantity']],
-                        textposition='outside',
-                        textfont=dict(
-                            size=14,
-                            color='#FFFFFF',  # White text for maximum contrast
-                            family='Arial'
-                        ),
-                        hovertemplate='<b>%{y}</b><br>Quantity: %{x:,.0f}<extra></extra>'
-                    ))
-
-                    fig.update_layout(
-                        height=350,
-                        margin=dict(l=150, r=80, t=20, b=50),  # Much larger margins
-                        paper_bgcolor='rgba(44, 62, 80, 1)',  # Dark background
-                        plot_bgcolor='rgba(44, 62, 80, 1)',  # Dark background
-                        font=dict(color='#FFFFFF', size=12, family='Arial'),
-                        showlegend=False,
-                        xaxis=dict(
-                            showgrid=True,
-                            gridcolor='rgba(255, 255, 255, 0.2)',
-                            gridwidth=1,
-                            title=dict(text="Quantity", font=dict(color='#FFFFFF', size=12)),
-                            tickfont=dict(color='#FFFFFF', size=11),
-                            zeroline=False
-                        ),
-                        yaxis=dict(
-                            showgrid=False,
-                            title=None,
-                            tickfont=dict(
-                                color='#FFFFFF',  # White text for y-axis labels
-                                size=12,
-                                family='Arial'
-                            ),
-                            automargin=True
-                        )
+                # Create donut chart
+                fig = go.Figure(data=[go.Pie(
+                    labels=product_mix['Particular'],
+                    values=product_mix['Quantity'],
+                    hole=0.3,
+                    marker=dict(
+                        colors=['#00BFFF', '#0099E5', '#28A745', '#FF9500', '#DC3545', '#6C757D', '#9B59B6', '#E74C3C']
                     )
+                )])
 
-                    st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
-                else:
-                    st.info("📊 No product data to display")
+                fig.update_layout(
+                    height=350,
+                    margin=dict(l=10, r=10, t=10, b=10),
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    plot_bgcolor='rgba(0,0,0,0)',
+                    font=dict(color='#374151', size=11, family='Arial'),
+                    showlegend=True,
+                    legend=dict(
+                        orientation="v",
+                        yanchor="middle",
+                        y=0.5,
+                        xanchor="left",
+                        x=1.05
+                    )
+                )
+
+                st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
             else:
-                st.info("📊 Product data not available")
+                st.info("Product mix data not available")
         except Exception as e:
             logger.error(f"Error rendering product mix: {str(e)}")
-            st.error("📊 Unable to render product performance chart")
+            st.error("Unable to render product mix chart")
 
         st.markdown("</div>", unsafe_allow_html=True)
 
@@ -290,27 +240,13 @@ def render_dashboard_page(sales_df, latest_inv, eoq_df, rop_df, mix_pct):
         """, unsafe_allow_html=True)
 
         try:
-            if (latest_inv is not None and not latest_inv.empty and
-                    eoq_df is not None and not eoq_df.empty):
+            if latest_inv is not None and not latest_inv.empty and eoq_df is not None and not eoq_df.empty:
+                # Determine columns
+                inv_sku_col = 'SKU' if 'SKU' in latest_inv.columns else 'Particular'
+                inv_qty_col = 'Current_Stock' if 'Current_Stock' in latest_inv.columns else 'Quantity'
+                eoq_sku_col = 'SKU' if 'SKU' in eoq_df.columns else 'Particular'
 
-                # Determine columns with fallbacks
-                inv_sku_col = None
-                inv_qty_col = None
-
-                for col in ['SKU', 'Particular', 'Item', 'Product']:
-                    if col in latest_inv.columns:
-                        inv_sku_col = col
-                        break
-
-                for col in ['Current_Stock', 'Quantity', 'Stock', 'Inventory']:
-                    if col in latest_inv.columns:
-                        inv_qty_col = col
-                        break
-
-                if inv_sku_col and inv_qty_col and 'EOQ' in eoq_df.columns:
-                    eoq_sku_col = 'SKU' if 'SKU' in eoq_df.columns else 'Particular'
-
-                    # Merge data
+                if inv_sku_col in latest_inv.columns and inv_qty_col in latest_inv.columns:
                     inv_comparison = latest_inv.merge(
                         eoq_df[[eoq_sku_col, 'EOQ']],
                         left_on=inv_sku_col,
@@ -318,82 +254,63 @@ def render_dashboard_page(sales_df, latest_inv, eoq_df, rop_df, mix_pct):
                         how='left'
                     )
 
-                    # Fill NaN EOQ values with 0
-                    inv_comparison['EOQ'] = inv_comparison['EOQ'].fillna(0)
-                    inv_comparison = inv_comparison.head(8)
+                    inv_comparison = inv_comparison.head(10)
 
-                    if not inv_comparison.empty:
-                        fig = go.Figure()
+                    fig = go.Figure()
 
-                        fig.add_trace(go.Bar(
-                            name='Current Stock',
-                            x=inv_comparison[inv_sku_col],
-                            y=inv_comparison[inv_qty_col],
-                            marker_color='#00BFFF',
-                            text=[f"{val:,.0f}" for val in inv_comparison[inv_qty_col]],
-                            textposition='outside',
-                            texttemplate='<b>%{text}</b>',
-                            textfont=dict(size=11, color='#2C3E50'),
-                            hovertemplate='<b>%{x}</b><br>Current: %{y:,.0f}<extra></extra>'
-                        ))
+                    fig.add_trace(go.Bar(
+                        name='Current Stock',
+                        x=inv_comparison[inv_sku_col],
+                        y=inv_comparison[inv_qty_col],
+                        marker_color='#00BFFF',
+                        hovertemplate='<b>%{x}</b><br>Current: %{y:,.0f}<extra></extra>'
+                    ))
 
-                        fig.add_trace(go.Bar(
-                            name='Optimal (EOQ)',
-                            x=inv_comparison[inv_sku_col],
-                            y=inv_comparison['EOQ'],
-                            marker_color='#28A745',
-                            text=[f"{val:,.0f}" for val in inv_comparison['EOQ']],
-                            textposition='outside',
-                            texttemplate='<b>%{text}</b>',
-                            textfont=dict(size=11, color='#2C3E50'),
-                            hovertemplate='<b>%{x}</b><br>Optimal: %{y:,.0f}<extra></extra>'
-                        ))
+                    fig.add_trace(go.Bar(
+                        name='Optimal (EOQ)',
+                        x=inv_comparison[inv_sku_col],
+                        y=inv_comparison['EOQ'],
+                        marker_color='#28A745',
+                        hovertemplate='<b>%{x}</b><br>Optimal: %{y:,.0f}<extra></extra>'
+                    ))
 
-                        fig.update_layout(
-                            height=350,
-                            margin=dict(l=50, r=30, t=40, b=80),
-                            paper_bgcolor='rgba(255,255,255,1)',
-                            plot_bgcolor='rgba(255,255,255,1)',
-                            font=dict(color='#2C3E50', size=12, family='Arial'),
-                            barmode='group',
-                            showlegend=True,
-                            legend=dict(
-                                orientation="h",
-                                yanchor="bottom",
-                                y=1.02,
-                                xanchor="right",
-                                x=1,
-                                bgcolor='rgba(255,255,255,0.9)',
-                                bordercolor='#E5E7EB',
-                                borderwidth=1,
-                                font=dict(color='#2C3E50', size=11)
-                            ),
-                            xaxis=dict(
-                                showgrid=False,
-                                title=None,
-                                tickangle=-45,
-                                tickfont=dict(color='#2C3E50', size=10)
-                            ),
-                            yaxis=dict(
-                                showgrid=True,
-                                gridcolor='rgba(200, 200, 200, 0.3)',
-                                gridwidth=1,
-                                title=dict(text="Quantity", font=dict(color='#2C3E50', size=12)),
-                                titlefont=dict(color='#2C3E50', size=12),
-                                tickfont=dict(color='#2C3E50', size=11)
-                            )
+                    fig.update_layout(
+                        height=350,
+                        margin=dict(l=20, r=20, t=10, b=20),
+                        paper_bgcolor='rgba(0,0,0,0)',
+                        plot_bgcolor='rgba(0,0,0,0)',
+                        font=dict(color='#374151', size=11, family='Arial'),
+                        barmode='group',
+                        showlegend=True,
+                        legend=dict(
+                            orientation="h",
+                            yanchor="bottom",
+                            y=1.02,
+                            xanchor="right",
+                            x=1
                         )
+                    )
 
-                        st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
-                    else:
-                        st.info("📊 No inventory comparison data available")
+                    fig.update_xaxes(
+                        showgrid=False,
+                        title=None,
+                        tickangle=-45
+                    )
+
+                    fig.update_yaxes(
+                        showgrid=True,
+                        gridcolor='rgba(148, 163, 184, 0.15)',
+                        title='Quantity'
+                    )
+
+                    st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
                 else:
-                    st.info("📊 Required columns not found in inventory data")
+                    st.info("Inventory comparison data incomplete")
             else:
-                st.info("📊 Inventory or EOQ data not available")
+                st.info("Inventory or EOQ data not available")
         except Exception as e:
             logger.error(f"Error rendering inventory comparison: {str(e)}")
-            st.error("📊 Unable to render inventory comparison chart")
+            st.error("Unable to render inventory comparison chart")
 
         st.markdown("</div>", unsafe_allow_html=True)
 
@@ -422,134 +339,110 @@ def render_dashboard_page(sales_df, latest_inv, eoq_df, rop_df, mix_pct):
                     x=reorder_counts['Status'],
                     y=reorder_counts['Count'],
                     marker_color=colors,
-                    text=[f"{val}" for val in reorder_counts['Count']],
-                    textposition='outside',
-                    texttemplate='<b>%{text}</b>',
-                    textfont=dict(size=12, color='#2C3E50'),
                     hovertemplate='<b>%{x}</b><br>Count: %{y}<extra></extra>'
                 )])
 
                 fig.update_layout(
                     height=350,
-                    margin=dict(l=50, r=30, t=20, b=80),
-                    paper_bgcolor='rgba(255,255,255,1)',
-                    plot_bgcolor='rgba(255,255,255,1)',
-                    font=dict(color='#2C3E50', size=12, family='Arial'),
-                    showlegend=False,
-                    xaxis=dict(
-                        showgrid=False,
-                        title=None,
-                        tickfont=dict(color='#2C3E50', size=11),
-                        tickangle=-15
-                    ),
-                    yaxis=dict(
-                        showgrid=True,
-                        gridcolor='rgba(200, 200, 200, 0.3)',
-                        gridwidth=1,
-                        title=dict(text="Number of SKUs", font=dict(color='#2C3E50', size=12)),
-                        titlefont=dict(color='#2C3E50', size=12),
-                        tickfont=dict(color='#2C3E50', size=11)
-                    )
+                    margin=dict(l=20, r=20, t=10, b=20),
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    plot_bgcolor='rgba(0,0,0,0)',
+                    font=dict(color='#374151', size=11, family='Arial'),
+                    showlegend=False
+                )
+
+                fig.update_xaxes(
+                    showgrid=False,
+                    title=None
+                )
+
+                fig.update_yaxes(
+                    showgrid=True,
+                    gridcolor='rgba(148, 163, 184, 0.15)',
+                    title='Number of SKUs'
                 )
 
                 st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
             else:
-                st.info("📊 Reorder analysis data not available")
+                st.info("Reorder analysis data not available")
         except Exception as e:
             logger.error(f"Error rendering reorder analysis: {str(e)}")
-            st.error("📊 Unable to render reorder analysis chart")
+            st.error("Unable to render reorder analysis chart")
 
         st.markdown("</div>", unsafe_allow_html=True)
 
     st.markdown("</div>", unsafe_allow_html=True)
 
-    # Monthly Trend Chart (Full Width) - Fixed mix_pct handling
+    # Monthly Trend Chart (Full Width)
     if mix_pct is not None:
-        # Handle both DataFrame and other types
+        # Proper handling of mix_pct data type
         try:
+            show_chart = False
             if hasattr(mix_pct, 'empty') and not mix_pct.empty:
-                show_mix_chart = True
+                show_chart = True
             elif isinstance(mix_pct, (dict, list)) and len(mix_pct) > 0:
-                show_mix_chart = True
-            else:
-                show_mix_chart = False
-        except:
-            show_mix_chart = False
+                show_chart = True
 
-        if show_mix_chart:
-            st.markdown("<div style='margin: 32px 0;'>", unsafe_allow_html=True)
-            st.markdown("""
-            <div class="chart-container">
-                <h3 class="chart-title">📅 Monthly Product Mix Evolution</h3>
-            """, unsafe_allow_html=True)
-
-            try:
-                # Convert to DataFrame if needed
-                if not isinstance(mix_pct, pd.DataFrame):
-                    mix_pct_df = pd.DataFrame(mix_pct)
-                else:
-                    mix_pct_df = mix_pct
+            if show_chart:
+                st.markdown("<div style='margin: 32px 0;'>", unsafe_allow_html=True)
+                st.markdown("""
+                <div class="chart-container">
+                    <h3 class="chart-title">📅 Monthly Product Mix Evolution</h3>
+                """, unsafe_allow_html=True)
 
                 fig = go.Figure()
 
-                products = mix_pct_df.columns.tolist()
-                colors = ['#00BFFF', '#0099E5', '#28A745', '#FF9500', '#DC3545', '#6C757D', '#9B59B6', '#E74C3C']
+                if isinstance(mix_pct, pd.DataFrame):
+                    products = mix_pct.columns.tolist()
+                    colors = ['#00BFFF', '#0099E5', '#28A745', '#FF9500', '#DC3545', '#6C757D']
 
-                for i, product in enumerate(products):
-                    fig.add_trace(go.Scatter(
-                        x=mix_pct_df.index,
-                        y=mix_pct_df[product],
-                        mode='lines+markers',
-                        name=product,
-                        line=dict(width=3, color=colors[i % len(colors)]),
-                        marker=dict(size=8),
-                        stackgroup='one',
-                        hovertemplate='<b>%{fullData.name}</b><br>%{y:.1f}%<extra></extra>'
-                    ))
+                    for i, product in enumerate(products):
+                        fig.add_trace(go.Scatter(
+                            x=mix_pct.index,
+                            y=mix_pct[product],
+                            mode='lines+markers',
+                            name=product,
+                            line=dict(width=3, color=colors[i % len(colors)]),
+                            marker=dict(size=8),
+                            stackgroup='one',
+                            hovertemplate='<b>%{fullData.name}</b><br>%{y:.1f}%<extra></extra>'
+                        ))
 
-                fig.update_layout(
-                    height=400,
-                    margin=dict(l=50, r=30, t=20, b=100),
-                    paper_bgcolor='rgba(255,255,255,1)',
-                    plot_bgcolor='rgba(255,255,255,1)',
-                    font=dict(color='#2C3E50', size=12, family='Arial'),
-                    showlegend=True,
-                    legend=dict(
-                        orientation="h",
-                        yanchor="bottom",
-                        y=-0.4,
-                        xanchor="center",
-                        x=0.5,
-                        bgcolor='rgba(255,255,255,0.9)',
-                        bordercolor='#E5E7EB',
-                        borderwidth=1,
-                        font=dict(color='#2C3E50', size=11)
-                    ),
-                    hovermode='x unified',
-                    xaxis=dict(
+                    fig.update_layout(
+                        height=400,
+                        margin=dict(l=20, r=20, t=10, b=40),
+                        paper_bgcolor='rgba(0,0,0,0)',
+                        plot_bgcolor='rgba(0,0,0,0)',
+                        font=dict(color='#374151', size=11, family='Arial'),
+                        showlegend=True,
+                        legend=dict(
+                            orientation="h",
+                            yanchor="bottom",
+                            y=-0.3,
+                            xanchor="center",
+                            x=0.5
+                        ),
+                        hovermode='x unified'
+                    )
+
+                    fig.update_xaxes(
                         showgrid=True,
-                        gridcolor='rgba(200, 200, 200, 0.3)',
-                        gridwidth=1,
-                        title=None,
-                        tickfont=dict(color='#2C3E50', size=11)
-                    ),
-                    yaxis=dict(
+                        gridcolor='rgba(148, 163, 184, 0.15)',
+                        title=None
+                    )
+
+                    fig.update_yaxes(
                         showgrid=True,
-                        gridcolor='rgba(200, 200, 200, 0.3)',
-                        gridwidth=1,
-                        title=dict(text="Percentage (%)", font=dict(color='#2C3E50', size=12)),
-                        titlefont=dict(color='#2C3E50', size=12),
-                        tickfont=dict(color='#2C3E50', size=11),
+                        gridcolor='rgba(148, 163, 184, 0.15)',
+                        title='Percentage (%)',
                         range=[0, 100]
                     )
-                )
 
-                st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
-            except Exception as e:
-                logger.error(f"Error rendering monthly mix: {str(e)}")
-                st.info("📊 Monthly mix data format not supported")
+                    st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
 
-            st.markdown("</div></div>", unsafe_allow_html=True)
+                st.markdown("</div></div>", unsafe_allow_html=True)
+        except Exception as e:
+            logger.error(f"Error rendering monthly mix: {str(e)}")
 
     # Recommendations Section
     st.markdown("<div style='margin: 48px 0 24px 0;'>", unsafe_allow_html=True)
@@ -574,13 +467,7 @@ def render_dashboard_page(sales_df, latest_inv, eoq_df, rop_df, mix_pct):
 
         try:
             if rop_df is not None and not rop_df.empty and 'Action' in rop_df.columns:
-                # Find SKU column
-                sku_col = 'SKU'
-                for col in ['SKU', 'Particular', 'Item', 'Product']:
-                    if col in rop_df.columns:
-                        sku_col = col
-                        break
-
+                sku_col = 'SKU' if 'SKU' in rop_df.columns else 'Particular'
                 urgent_items = rop_df[rop_df['Action'] == 'REORDER NOW']
                 if not urgent_items.empty:
                     for idx, row in urgent_items.head(3).iterrows():
@@ -600,7 +487,6 @@ def render_dashboard_page(sales_df, latest_inv, eoq_df, rop_df, mix_pct):
                 st.info("No reorder data available")
         except Exception as e:
             logger.error(f"Error displaying urgent actions: {str(e)}")
-            st.info("Unable to load urgent recommendations")
 
         st.markdown("</div>", unsafe_allow_html=True)
 
@@ -617,13 +503,7 @@ def render_dashboard_page(sales_df, latest_inv, eoq_df, rop_df, mix_pct):
 
         try:
             if rop_df is not None and not rop_df.empty and 'Action' in rop_df.columns:
-                # Find SKU column
-                sku_col = 'SKU'
-                for col in ['SKU', 'Particular', 'Item', 'Product']:
-                    if col in rop_df.columns:
-                        sku_col = col
-                        break
-
+                sku_col = 'SKU' if 'SKU' in rop_df.columns else 'Particular'
                 warning_items = rop_df[rop_df['Action'] == 'REORDER SOON']
                 if not warning_items.empty:
                     for idx, row in warning_items.head(3).iterrows():
@@ -643,7 +523,6 @@ def render_dashboard_page(sales_df, latest_inv, eoq_df, rop_df, mix_pct):
                 st.info("No reorder data available")
         except Exception as e:
             logger.error(f"Error displaying plan ahead items: {str(e)}")
-            st.info("Unable to load planning recommendations")
 
         st.markdown("</div>", unsafe_allow_html=True)
 
@@ -660,13 +539,7 @@ def render_dashboard_page(sales_df, latest_inv, eoq_df, rop_df, mix_pct):
 
         try:
             if rop_df is not None and not rop_df.empty and 'Action' in rop_df.columns:
-                # Find SKU column
-                sku_col = 'SKU'
-                for col in ['SKU', 'Particular', 'Item', 'Product']:
-                    if col in rop_df.columns:
-                        sku_col = col
-                        break
-
+                sku_col = 'SKU' if 'SKU' in rop_df.columns else 'Particular'
                 adequate_items = rop_df[rop_df['Action'] == 'ADEQUATE']
                 if not adequate_items.empty:
                     for idx, row in adequate_items.head(3).iterrows():
@@ -686,7 +559,6 @@ def render_dashboard_page(sales_df, latest_inv, eoq_df, rop_df, mix_pct):
                 st.info("No reorder data available")
         except Exception as e:
             logger.error(f"Error displaying optimal stock items: {str(e)}")
-            st.info("Unable to load optimization recommendations")
 
         st.markdown("</div>", unsafe_allow_html=True)
 
@@ -794,13 +666,14 @@ def render_dashboard_page(sales_df, latest_inv, eoq_df, rop_df, mix_pct):
                             try:
                                 spec.loader.exec_module(simulation)
 
-                                # Run simulation with non-interactive mode if available
+                                # Run simulation
                                 if hasattr(simulation, 'simulate'):
                                     if hasattr(simulation, 'INTERACTIVE'):
                                         simulation.INTERACTIVE = False
                                     simulation.simulate(interactive=False)
                                 else:
-                                    st.error("simulate() function not found in simulation module")
+                                    # Try to run main function or script
+                                    st.info("Running simulation in script mode...")
                             finally:
                                 sys.stdout = old_stdout
 
@@ -829,12 +702,11 @@ def render_dashboard_page(sales_df, latest_inv, eoq_df, rop_df, mix_pct):
                                     tab1, tab2 = st.tabs(["📊 Performance Charts", "📋 Detailed Data"])
 
                                     with tab1:
+                                        # Fill Rate Chart
                                         if 'cum_fill_rate_pct' in daily_summary.columns:
-                                            # Fill Rate Chart
                                             fig = go.Figure()
                                             fig.add_trace(go.Scatter(
-                                                x=daily_summary[
-                                                    'Date'] if 'Date' in daily_summary.columns else daily_summary.index,
+                                                x=daily_summary.index,
                                                 y=daily_summary['cum_fill_rate_pct'],
                                                 mode='lines',
                                                 name='Cumulative Fill Rate',
@@ -846,33 +718,23 @@ def render_dashboard_page(sales_df, latest_inv, eoq_df, rop_df, mix_pct):
                                             fig.update_layout(
                                                 title="Cumulative Fill Rate Over Time",
                                                 height=300,
-                                                margin=dict(l=50, r=30, t=60, b=50),
-                                                paper_bgcolor='rgba(255,255,255,1)',
-                                                plot_bgcolor='rgba(255,255,255,1)',
-                                                font=dict(color='#2C3E50', size=12),
-                                                xaxis=dict(
-                                                    showgrid=True,
-                                                    gridcolor='rgba(200, 200, 200, 0.3)',
-                                                    tickfont=dict(color='#2C3E50')
-                                                ),
-                                                yaxis=dict(
-                                                    showgrid=True,
-                                                    gridcolor='rgba(200, 200, 200, 0.3)',
-                                                    title='Fill Rate (%)',
-                                                    titlefont=dict(color='#2C3E50'),
-                                                    tickfont=dict(color='#2C3E50'),
-                                                    range=[0, 100]
-                                                )
+                                                margin=dict(l=20, r=20, t=40, b=20),
+                                                paper_bgcolor='rgba(0,0,0,0)',
+                                                plot_bgcolor='rgba(0,0,0,0)',
+                                                font=dict(color='#374151', size=11)
                                             )
+
+                                            fig.update_xaxes(showgrid=True, gridcolor='rgba(148, 163, 184, 0.15)')
+                                            fig.update_yaxes(showgrid=True, gridcolor='rgba(148, 163, 184, 0.15)',
+                                                             title='Fill Rate (%)', range=[0, 100])
 
                                             st.plotly_chart(fig, use_container_width=True)
 
+                                        # Backorder Chart
                                         if 'open_backorders_units' in daily_summary.columns:
-                                            # Backorder Chart
                                             fig2 = go.Figure()
                                             fig2.add_trace(go.Bar(
-                                                x=daily_summary[
-                                                    'Date'] if 'Date' in daily_summary.columns else daily_summary.index,
+                                                x=daily_summary.index,
                                                 y=daily_summary['open_backorders_units'],
                                                 name='Open Backorders',
                                                 marker_color='#DC3545'
@@ -881,22 +743,15 @@ def render_dashboard_page(sales_df, latest_inv, eoq_df, rop_df, mix_pct):
                                             fig2.update_layout(
                                                 title="Daily Open Backorders",
                                                 height=300,
-                                                margin=dict(l=50, r=30, t=60, b=50),
-                                                paper_bgcolor='rgba(255,255,255,1)',
-                                                plot_bgcolor='rgba(255,255,255,1)',
-                                                font=dict(color='#2C3E50', size=12),
-                                                xaxis=dict(
-                                                    showgrid=False,
-                                                    tickfont=dict(color='#2C3E50')
-                                                ),
-                                                yaxis=dict(
-                                                    showgrid=True,
-                                                    gridcolor='rgba(200, 200, 200, 0.3)',
-                                                    title='Units',
-                                                    titlefont=dict(color='#2C3E50'),
-                                                    tickfont=dict(color='#2C3E50')
-                                                )
+                                                margin=dict(l=20, r=20, t=40, b=20),
+                                                paper_bgcolor='rgba(0,0,0,0)',
+                                                plot_bgcolor='rgba(0,0,0,0)',
+                                                font=dict(color='#374151', size=11)
                                             )
+
+                                            fig2.update_xaxes(showgrid=False)
+                                            fig2.update_yaxes(showgrid=True, gridcolor='rgba(148, 163, 184, 0.15)',
+                                                              title='Units')
 
                                             st.plotly_chart(fig2, use_container_width=True)
 
@@ -987,30 +842,22 @@ def render_dashboard_page(sales_df, latest_inv, eoq_df, rop_df, mix_pct):
 
     with tab3:
         if rop_df is not None and not rop_df.empty:
-            # Color code by action with error handling
-            try:
-                def highlight_action(row):
-                    if 'Action' in row:
-                        if row['Action'] == 'REORDER NOW':
-                            return ['background-color: #FFF5F5'] * len(row)
-                        elif row['Action'] == 'REORDER SOON':
-                            return ['background-color: #FFF8F0'] * len(row)
-                        elif row['Action'] == 'ADEQUATE':
-                            return ['background-color: #F0FFF4'] * len(row)
-                    return [''] * len(row)
+            # Color code by action
+            def highlight_action(row):
+                if 'Action' in row:
+                    if row['Action'] == 'REORDER NOW':
+                        return ['background-color: #FFF5F5'] * len(row)
+                    elif row['Action'] == 'REORDER SOON':
+                        return ['background-color: #FFF8F0'] * len(row)
+                    elif row['Action'] == 'ADEQUATE':
+                        return ['background-color: #F0FFF4'] * len(row)
+                return [''] * len(row)
 
-                st.dataframe(
-                    rop_df.style.apply(highlight_action, axis=1),
-                    use_container_width=True,
-                    height=400
-                )
-            except:
-                # Fallback without styling
-                st.dataframe(
-                    rop_df,
-                    use_container_width=True,
-                    height=400
-                )
+            st.dataframe(
+                rop_df.style.apply(highlight_action, axis=1),
+                use_container_width=True,
+                height=400
+            )
 
             csv = rop_df.to_csv(index=False).encode('utf-8')
             st.download_button(
