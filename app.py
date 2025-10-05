@@ -65,6 +65,7 @@ LATEST_INV_CSV = os.path.join(DATA_DIR, "latest_inventory.csv")
 EOQ_OUT_CSV = os.path.join(OUTPUT_DIR, "eoq_results.csv")
 REORDER_EVAL_CSV = os.path.join(DATA_DIR, "reorder_evaluation.csv")
 
+
 # =========================
 # Session State Initialization
 # =========================
@@ -81,7 +82,9 @@ def init_session_state():
     if "error_log" not in st.session_state:
         st.session_state["error_log"] = []
 
+
 init_session_state()
+
 
 # =========================
 # File Validation
@@ -101,6 +104,7 @@ def validate_required_files():
             logger.error(f"Missing required file: {path}")
 
     return missing_files
+
 
 # =========================
 # Data Helpers
@@ -132,6 +136,7 @@ def load_sales():
         st.session_state["error_log"].append(f"Sales load error: {str(e)}")
         return None
 
+
 def try_read_csv(path, description="data"):
     """Safely read CSV with comprehensive error handling"""
     try:
@@ -150,6 +155,7 @@ def try_read_csv(path, description="data"):
         logger.error(f"Error reading {description} from {path}: {str(e)}")
         st.session_state["error_log"].append(f"{description} read error: {str(e)}")
         return None
+
 
 @st.cache_data(show_spinner=False, ttl=3600)
 def compute_pipeline():
@@ -177,15 +183,17 @@ def compute_pipeline():
         # Step 1: Build inventory timeline
         try:
             logger.info("Building inventory timeline...")
-            inv_dict = build_inventory_timeline(SALES_XLSX, PURCHASE_XLSX, BASE_INV_XLSX)
+            result = build_inventory_timeline(SALES_XLSX, PURCHASE_XLSX, BASE_INV_XLSX)
 
-            if not inv_dict or len(inv_dict) == 0:
+            # build_inventory_timeline returns a tuple: (inventory_df, latest_inventory_df)
+            if isinstance(result, tuple) and len(result) == 2:
+                inventory_timeline, latest_inv_df = result
+                results["latest_inv"] = latest_inv_df
+            else:
+                return False, results, "Inventory timeline returned unexpected format"
+
+            if results["latest_inv"] is None or results["latest_inv"].empty:
                 return False, results, "Inventory timeline returned empty results"
-
-            # Get latest inventory
-            latest_date = max(inv_dict.keys())
-            latest_inv_data = inv_dict[latest_date]
-            results["latest_inv"] = pd.DataFrame(latest_inv_data)
 
             # Save to CSV
             results["latest_inv"].to_csv(LATEST_INV_CSV, index=False)
@@ -261,6 +269,7 @@ def compute_pipeline():
         logger.error(error_msg)
         return False, results, error_msg
 
+
 # =========================
 # Navigation
 # =========================
@@ -277,19 +286,23 @@ def render_navigation():
     col1, col2, col3, col4, col5 = st.columns([1, 1, 1, 1, 2])
 
     with col1:
-        if st.button("🏠 Home", use_container_width=True, type="primary" if st.session_state["current_page"] == "Home" else "secondary"):
+        if st.button("🏠 Home", use_container_width=True,
+                     type="primary" if st.session_state["current_page"] == "Home" else "secondary"):
             st.session_state["current_page"] = "Home"
             st.rerun()
 
     with col2:
-        if st.button("📊 Dashboard", use_container_width=True, type="primary" if st.session_state["current_page"] == "Dashboard" else "secondary"):
+        if st.button("📊 Dashboard", use_container_width=True,
+                     type="primary" if st.session_state["current_page"] == "Dashboard" else "secondary"):
             st.session_state["current_page"] = "Dashboard"
             st.rerun()
 
     with col3:
-        if st.button("📦 Inventory", use_container_width=True, type="primary" if st.session_state["current_page"] == "Inventory" else "secondary"):
+        if st.button("📦 Inventory", use_container_width=True,
+                     type="primary" if st.session_state["current_page"] == "Inventory" else "secondary"):
             st.session_state["current_page"] = "Inventory"
             st.rerun()
+
 
 # =========================
 # Main App
@@ -351,6 +364,7 @@ def main():
         """, unsafe_allow_html=True)
 
         st.info("🚧 **Under Development** - Advanced inventory management features coming soon!")
+
 
 if __name__ == "__main__":
     main()
