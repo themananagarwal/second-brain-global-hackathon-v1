@@ -326,7 +326,7 @@ def inject_global_css():
   margin: 0 auto;
   padding: var(--spacing-sm) var(--spacing-md);
   display: flex;
-  align-items: center;
+  align-items: left;
   justify-content: space-between;
 }
 
@@ -338,7 +338,7 @@ body {
 /* Small cleanup: 'left' isn’t valid for align-items */
 .nav-brand {
   display: flex;
-  align-items: center;
+  align-items: left;
   gap: var(--spacing-xs);
   font-size: 1.5rem;
   font-weight: 700;
