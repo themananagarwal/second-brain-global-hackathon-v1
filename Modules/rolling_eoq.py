@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 
-def calculate_rolling_eoq(sales_df, sku_weights, lookback_days=365, today=None):
+def calculate_rolling_eoq(sales_df, sku_weights, lookback_days=180, today=None):
     """
     Calculates EOQ per SKU based on recent sales data.
 
@@ -40,8 +40,8 @@ def calculate_rolling_eoq(sales_df, sku_weights, lookback_days=365, today=None):
     # Estimate per-piece holding cost dynamically using weight
     def estimate_holding_cost(sku):
         weight = sku_weights.get(sku, 40)  # Default weight = 40kg if unknown
-        monthly_cost = 500 + 15000 + 16000 * 2  # Electricity + Rent + Labour
-        monthly_cost_per_piece = (monthly_cost / 10000) * (weight / 40)  # Assumes 10,000kg capacity
+        monthly_cost = 500 + 15000 + (16000 * 2)  # Electricity + Rent + Labour
+        monthly_cost_per_piece = (monthly_cost / 2500) * (weight / 40)  # Assumes 10,000kg capacity
         return monthly_cost_per_piece * 12  # Annualize
 
     demand_summary['holding_cost'] = demand_summary['Particular'].apply(estimate_holding_cost)
