@@ -49,6 +49,9 @@ eoq_results = calculate_rolling_eoq(sales_df, sku_weights, lookback_days=90)
 # Create outputs directory if it doesn't exist (FIX)
 Path("outputs").mkdir(parents=True, exist_ok=True)
 
+# Create outputs directory if it doesn't exist (FIX)
+Path("outputs").mkdir(parents=True, exist_ok=True)
+
 # Save or inspect the EOQ results
 eoq_results.to_csv("outputs/eoq_results.csv", index=False)
 print(eoq_results)
